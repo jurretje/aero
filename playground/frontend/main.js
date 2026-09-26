@@ -9,11 +9,9 @@ const SETTINGS = {
 
 const editor = {
     text: localStorage.getItem(STORAGE_KEY) ?? "",
-    cursors: [{ line: 0, column: 0, position: 0 }],
+    cursors: [{ position: 0, anchor: 0 }],
     focused: false,
 }
-
-
 
 function getLocationFromMouse(event) {
     const rect = viewport.getBoundingClientRect();
@@ -47,163 +45,317 @@ function getLocationFromMouse(event) {
     };
 }
 
+function positionToLocation(position) {
+    const before = editor.text.slice(0, position);
+
+    const line = before.split("\n").length - 1;
+    const lastNewline = before.lastIndexOf("\n");
+
+    const column =
+        lastNewline === -1
+            ? position
+            : position - lastNewline - 1;
+
+    return { line, column };
+}
+
+function locationToPosition(line, column) {
+    const lines = editor.text.split("\n");
+
+    let position = 0;
+    for (let i = 0; i < line; i++) {
+        position += lines[i].length + 1;
+    }
+
+    return position + column;
+}
+
+function selectionStart(cursor) {
+    return Math.min(cursor.position, cursor.anchor);
+}
+
+function selectionEnd(cursor) {
+    return Math.max(cursor.position, cursor.anchor);
+}
+
+function hasSelection(cursor) {
+    return cursor.position !== cursor.anchor;
+}
+
+function selectedText(cursor) {
+    return editor.text.slice(
+        selectionStart(cursor),
+        selectionEnd(cursor)
+    );
+}
+
+function selectAll() {
+    console.log("select all");
+
+    editor.cursors = [{
+        position: editor.text.length,
+        anchor: 0
+    }];
+
+    render();
+}
 
 function saveEditor() {
     localStorage.setItem(STORAGE_KEY, editor.text);
 }
 
-function render() {
-    viewport.innerHTML = "";
-    const lines = editor.text.split("\n");
-    for (let i = 0; i < lines.length; i++) {
-        const line = document.createElement("div");
-        line.className = "line-of-code";
+function renderLine(text, lineNumber) {
+    const line = document.createElement("div");
+    line.className = "line-of-code";
 
-        const text = document.createElement("span");
-        text.textContent = lines[i];
+    for (let i = 0; i < text.length; i++) {
+        const char = document.createElement("span");
+        char.textContent = text[i];
 
-        line.appendChild(text);
+        const position = locationToPosition(lineNumber, i);
 
-        if (editor.focused) {
-            for (const cursor of editor.cursors) {
-                if (cursor.line === i) {
-                    const caret = document.createElement("span");
-                    caret.className = "cursor";
-                    caret.style.left = `${cursor.column}ch`;
-                    line.appendChild(caret);
-                }
+        for (const cursor of editor.cursors) {
+            const start = selectionStart(cursor);
+            const end = selectionEnd(cursor);
+
+            if (position >= start && position < end) {
+                char.classList.add("selected");
             }
         }
 
-
-        viewport.appendChild(line);
+        line.appendChild(char);
     }
+
+    for (const cursor of editor.cursors) {
+        const location = positionToLocation(cursor.position);
+
+        if (location.line === lineNumber) {
+            const caret = document.createElement("span");
+            caret.className = "cursor";
+            caret.style.left = `${location.column}ch`;
+
+            line.appendChild(caret);
+        }
+    }
+
+    return line;
 }
 
-function handleTab() {
-    const { column } = editor.cursors[0];
 
-    const count = SETTINGS.tabSize - (column % SETTINGS.tabSize);
+function render() {
+    viewport.innerHTML = "";
 
-    insertText(" ".repeat(count));
-}
-
-function handleBackspace() {
-    const cursor = editor.cursors[0];
     const lines = editor.text.split("\n");
 
-    if (cursor.line === 0 && cursor.column === 0) {
-        return;
+    for (let i = 0; i < lines.length; i++) {
+        viewport.appendChild(
+            renderLine(lines[i], i)
+        );
     }
-
-    if (cursor.column > 0) {
-        const line = lines[cursor.line];
-        lines[cursor.line] = line.slice(0, cursor.column - 1) + line.slice(cursor.column);
-
-        cursor.column--;
-    } else {
-        const previousLine = lines[cursor.line - 1];
-        const currentLine = lines[cursor.line];
-
-        cursor.line--;
-        cursor.column = previousLine.length;
-        lines[cursor.line] = previousLine + currentLine;
-        lines.splice(cursor.line + 1, 1);
-    }
-
-    editor.text = lines.join("\n");
-    saveEditor();
-    render();
 }
 
 function handleEnter() {
-    const cursor = editor.cursors[0];
-    const lines = editor.text.split("\n");
+    insertText("\n");
+}
 
-    const currentLine = lines[cursor.line];
+function handleTab() {
+    for (const cursor of editor.cursors) {
+        const { column } = positionToLocation(cursor.position);
+        const count = SETTINGS.tabSize - (column % SETTINGS.tabSize);
+        insertText(" ".repeat(count));
+    }
+}
 
-    const before = currentLine.slice(0, cursor.column);
-    const after = currentLine.slice(cursor.column);
+function handleBackspace() {
+    const edits = editor.cursors
+        .map(cursor => {
+            const start = selectionStart(cursor);
+            const end = selectionEnd(cursor);
 
-    lines[cursor.line] = before;
-    lines.splice(cursor.line + 1, 0, after);
+            if (start !== end) {
+                cursor.position = start;
+                cursor.anchor = start;
 
-    editor.text = lines.join("\n");
+                return {
+                    start,
+                    end,
+                    text: ""
+                };
+            }
 
-    cursor.line++;
-    cursor.column = 0;
+            if (cursor.position === 0) {
+                return null;
+            }
+
+            const position = cursor.position;
+
+            cursor.position--;
+            cursor.anchor--;
+
+            return {
+                start: position - 1,
+                end: position,
+                text: ""
+            };
+        })
+        .filter(Boolean);
+
+    replaceRanges(edits);
+    normalizeCursors();
+
     saveEditor();
     render();
 }
 
 function insertText(text) {
-    const cursor = editor.cursors[0];
-    const lines = editor.text.split("\n");
+    const cursors = [...editor.cursors]
+        .sort((a, b) => selectionStart(b) - selectionStart(a));
 
-    const currentLine = lines[cursor.line];
+    for (const cursor of cursors) {
+        const start = selectionStart(cursor);
+        const end = selectionEnd(cursor);
 
-    lines[cursor.line] = lines[cursor.line].slice(0, cursor.column) + text + lines[cursor.line].slice(cursor.column);
+        editor.text =
+            editor.text.slice(0, start) +
+            text +
+            editor.text.slice(end);
 
-    editor.text = lines.join("\n");
+        const position = start + text.length;
 
-    editor.cursors[0].column += text.length;
+        cursor.position = position;
+        cursor.anchor = position;
+    }
 
     saveEditor();
     render();
 }
 
-function handleArrowKey(key) {
-    const lines = editor.text.split("\n");
+function replaceRanges(edits) {
+    edits.sort((a, b) => b.start - a.start);
+
+    for (const edit of edits) {
+        editor.text =
+            editor.text.slice(0, edit.start) +
+            edit.text +
+            editor.text.slice(edit.end);
+    }
+}
+
+function nextWordBoundary(position) {
+    const length = editor.text.length;
+
+    let i = position;
+
+    while (i < length && /\s/.test(editor.text[i])) {
+        i++;
+    }
+
+    while (i < length && /[\w]/.test(editor.text[i])) {
+        i++;
+    }
+
+    return i;
+}
+
+function handleCtrlDelete() {
+    const cursor = editor.cursors[0];
+
+    if (hasSelection(cursor)) {
+        insertText("");
+        return;
+    }
+
+    const end = nextWordBoundary(cursor.position);
+
+    editor.text =
+        editor.text.slice(0, cursor.position) +
+        editor.text.slice(end);
+
+    saveEditor();
+    render();
+}
+
+function handleArrowKey(key, selecting) {
     for (const cursor of editor.cursors) {
+        let position = cursor.position;
+
         if (key === "ArrowLeft") {
-            if (cursor.column > 0) {
-                cursor.column--;
-            } else if (cursor.line > 0) {
-                cursor.line--;
-                cursor.column = lines[cursor.line].length;
-            }
+            position = Math.max(0, position - 1);
         }
 
         if (key === "ArrowRight") {
-            if (cursor.column < lines[cursor.line].length) {
-                cursor.column++;
-            } else if (cursor.line < lines.length - 1) {
-                cursor.line++;
-                cursor.column = 0;
-            }
+            position = Math.min(editor.text.length, position + 1);
         }
 
         if (key === "ArrowUp") {
-            if (cursor.line > 0) {
-                cursor.line--;
-                cursor.column = Math.min(
-                    cursor.column,
-                    lines[cursor.line].length
+            const { line, column } = positionToLocation(position);
+
+            if (line > 0) {
+                const newLine = line - 1;
+                const newColumn = Math.min(
+                    column,
+                    editor.text.split("\n")[newLine].length
                 );
+
+                position = locationToPosition(newLine, newColumn);
             }
         }
 
         if (key === "ArrowDown") {
-            if (cursor.line < lines.length - 1) {
-                cursor.line++;
-                cursor.column = Math.min(
-                    cursor.column,
-                    lines[cursor.line].length
+            const { line, column } = positionToLocation(position);
+            const lines = editor.text.split("\n");
+
+            if (line < lines.length - 1) {
+                const newLine = line + 1;
+                const newColumn = Math.min(
+                    column,
+                    lines[newLine].length
                 );
+
+                position = locationToPosition(newLine, newColumn);
             }
+        }
+
+        cursor.position = position;
+
+        if (!selecting) {
+            cursor.anchor = position;
         }
     }
 
-
+    normalizeCursors();
     render();
 }
 
-function keyDownListener(event) {
+function addCursor(position) {
+    if (editor.cursors.some(cursor => cursor.position == position)) {
+        return;
+    }
 
+    editor.cursors.push({
+        position,
+        anchor: position
+    })
+}
+
+function keyDownListener(event) {
+    const key = event.key.toLowerCase();
+
+    if (event.ctrlKey && !event.shiftKey && key === "a") {
+        event.preventDefault();
+        selectAll();
+        return;
+    }
+
+    if (event.ctrlKey && !event.shiftKey && key === "delete") {
+        event.preventDefault();
+        handleCtrlDelete();
+        return;
+    }
 
     if (event.key.startsWith("Arrow")) {
         event.preventDefault();
-        handleArrowKey(event.key);
+        handleArrowKey(event.key, event.shiftKey);
         return;
     }
 
@@ -225,13 +377,30 @@ function keyDownListener(event) {
         return;
     }
 
-    if (event.key.length === 1) {
+    if (
+        event.key.length === 1 &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey
+    ) {
         event.preventDefault();
         insertText(event.key);
         return;
     }
 }
 
+function normalizeCursors() {
+    const seen = new Set();
+
+    editor.cursors = editor.cursors.filter(cursor => {
+        if (seen.has(cursor.position)) {
+            return false;
+        }
+
+        seen.add(cursor.position);
+        return true;
+    });
+}
 
 function main() {
     input.addEventListener("keydown", keyDownListener);
@@ -250,12 +419,19 @@ function main() {
     input.addEventListener("mousedown", event => {
         const location = getLocationFromMouse(event);
 
-        console.log(location);
+        const position = locationToPosition(
+            location.line,
+            location.column
+        );
 
-        editor.cursors = [{
-            position: 0, // todo
-            ...location
-        }];
+        if (event.altKey) {
+            addCursor(position);
+        } else {
+            editor.cursors = [{
+                position,
+                anchor: position
+            }];
+        }
 
         input.focus({ preventScroll: true });
         render();
