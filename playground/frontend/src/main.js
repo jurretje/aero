@@ -1,17 +1,11 @@
+
 const viewport = document.getElementById("viewport");
 const input = document.getElementById("input");
 
 
-const STORAGE_KEY = "aero-playground-source";
-const SETTINGS = {
-    tabSize: 4
-};
 
-const editor = {
-    text: localStorage.getItem(STORAGE_KEY) ?? "",
-    cursors: [{ position: 0, anchor: 0 }],
-    focused: false,
-}
+
+const lines = () => editor.text.split("\n");
 
 function getLocationFromMouse(event) {
     const rect = viewport.getBoundingClientRect();
@@ -60,26 +54,19 @@ function positionToLocation(position) {
 }
 
 function locationToPosition(line, column) {
-    const lines = editor.text.split("\n");
+    return lines().slice(0, line).reduce((position, text) => position + text.length + 1, 0) + column
+}
+const selectionStart = cursor => Math.min(cursor.position, cursor.anchor);
+const selectionEnd = cursor => Math.max(cursor.position, cursor.anchor);
+const selected = cursor => selectionStart(cursor) !== selectionEnd(cursor);
 
-    let position = 0;
-    for (let i = 0; i < line; i++) {
-        position += lines[i].length + 1;
-    }
-
-    return position + column;
+function setSelection(position, anchor = position) {
+    editor.cursors = [{ position, anchor }]
 }
 
-function selectionStart(cursor) {
-    return Math.min(cursor.position, cursor.anchor);
-}
-
-function selectionEnd(cursor) {
-    return Math.max(cursor.position, cursor.anchor);
-}
-
-function hasSelection(cursor) {
-    return cursor.position !== cursor.anchor;
+function selectAll() {
+    setSelection(editor.text.length, 0);
+    render();
 }
 
 function selectedText(cursor) {
@@ -89,19 +76,17 @@ function selectedText(cursor) {
     );
 }
 
-function selectAll() {
-    console.log("select all");
+function normalizeCursors() {
+    const seen = new Set();
 
-    editor.cursors = [{
-        position: editor.text.length,
-        anchor: 0
-    }];
+    editor.cursors = editor.cursors.filter(cursor => {
+        if (seen.has(cursor.position)) {
+            return false;
+        }
 
-    render();
-}
-
-function saveEditor() {
-    localStorage.setItem(STORAGE_KEY, editor.text);
+        seen.add(cursor.position);
+        return true;
+    });
 }
 
 function renderLine(text, lineNumber) {
@@ -203,7 +188,7 @@ function handleBackspace() {
     replaceRanges(edits);
     normalizeCursors();
 
-    saveEditor();
+    save();
     render();
 }
 
@@ -226,7 +211,7 @@ function insertText(text) {
         cursor.anchor = position;
     }
 
-    saveEditor();
+    save();
     render();
 }
 
@@ -271,7 +256,7 @@ function handleCtrlDelete() {
         editor.text.slice(0, cursor.position) +
         editor.text.slice(end);
 
-    saveEditor();
+    save();
     render();
 }
 
@@ -387,19 +372,6 @@ function keyDownListener(event) {
         insertText(event.key);
         return;
     }
-}
-
-function normalizeCursors() {
-    const seen = new Set();
-
-    editor.cursors = editor.cursors.filter(cursor => {
-        if (seen.has(cursor.position)) {
-            return false;
-        }
-
-        seen.add(cursor.position);
-        return true;
-    });
 }
 
 function main() {
