@@ -37,7 +37,9 @@ button:hover {
 }
 
 #viewport {
-    font-family: "JetBrains Mono", monospace;
+    font-family: "JetBrainsMono Nerd Font", monospace;
+    font-variant-ligatures: normal;
+    font-feature-settings: "calt" 1;
     background-color: #111;
     height: 100%;
     outline: none;
