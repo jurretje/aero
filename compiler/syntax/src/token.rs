@@ -1,14 +1,16 @@
 use std::fmt::Debug;
 
+use serde::Serialize;
+
 use crate::{source::Span, style::Style};
 
-#[derive(PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone, Serialize)]
 pub struct Token {
     pub kind: TokenKind,
     pub span: Span,
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Serialize)]
 pub enum TokenKind {
     Ind,
     Elim,

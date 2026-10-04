@@ -1,111 +1,92 @@
 import { editor } from "../editor/state.js";
-import { selectAll, type, handleBackspace, handleArrow, addCursor, } from "../editor/editor.js";
-import { handleEnter, handleTab, } from "../editor/editing.js";
-import { locationToPosition, } from "../editor/selection.js";
-import { render } from "./editor-view.js";
+import { handle_enter, handle_tab, select_all, handle_backspace, handle_arrow, add_cursor, insert_text } from "../editor/editor.js";
+import { location_to_position, } from "../editor/selection.js";
+import { render } from "./render.js";
 import { get_location_from_mouse } from "./mouse.js";
 
 export function setup_input(input, viewport) {
+    const update = () => render(viewport);
+
     input.addEventListener("keydown", event => {
-        const key = event.key.toLowerCase();
+        const { key, ctrlKey, metaKey, altKey, shiftKey } = event;
+        const lower = event.key.toLowerCase();
 
         if (
-            event.ctrlKey &&
-            !event.shiftKey &&
-            key === "a"
+            ctrlKey &&
+            !shiftKey &&
+            lower === "a"
         ) {
             event.preventDefault();
 
-            selectAll();
-            render(viewport);
-            return;
-        }
-
-        if (event.key.startsWith("Arrow")) {
+            select_all();
+        } else if (key.startsWith("Arrow")) {
             event.preventDefault();
-
-            handleArrow(
+            handle_arrow(
                 event.key,
                 event.shiftKey
             );
-
-            render(viewport);
-            return;
-        }
-
-        if (event.key === "Backspace") {
+        } else if (key === "Backspace") {
             event.preventDefault();
+            handle_backspace();
 
-            handleBackspace();
-            render(viewport);
-            return;
-        }
-
-        if (event.key === "Tab") {
+        } else if (key === "Tab") {
             event.preventDefault();
-
-            handleTab();
-            render(viewport);
-            return;
-        }
-
-        if (event.key === "Enter") {
+            handle_tab();
+        } else if (key === "Enter") {
             event.preventDefault();
-
-            handleEnter();
-            render(viewport);
-            return;
+            handle_enter();
         }
-
-        if (
-            event.key.length === 1 &&
-            !event.ctrlKey &&
-            !event.metaKey &&
-            !event.altKey
+        else if (
+            key.length === 1 &&
+            !ctrlKey &&
+            !metaKey &&
+            !altKey
         ) {
             event.preventDefault();
-
-            type(event.key);
-            render(viewport);
+            insert_text(event.key);
         }
+        update();
     });
 
     input.addEventListener("focus", () => {
         editor.focused = true;
-        render(viewport);
+        update();
     });
 
     input.addEventListener("blur", () => {
         editor.focused = false;
-        render(viewport);
+        update();
     });
 
     input.addEventListener("mousedown", event => {
-        const location =
-            get_location_from_mouse(
-                event,
-                viewport
-            );
+        const position = mouse_position(event, viewport);
 
-        const position =
-            locationToPosition(
-                location.line,
-                location.column
-            );
-
-        if (event.altKey) {
-            addCursor(position);
-        } else {
-            editor.cursors = [{
-                position,
-                anchor: position,
-            }];
-        }
+        const cursor = event.altKey
+            ? add_cursor(position)
+            : (editor.cursors = [{ position, anchor: position }], editor.cursors[0]);
 
         input.focus({
             preventScroll: true,
         });
+        update();
 
-        render(viewport);
+        const drag = event => {
+            const position = mouse_position(event, viewport);
+            cursor.position = position;
+            update();
+        };
+
+        const stop = () => {
+            window.removeEventListener("mousemove", drag);
+            window.removeEventListener("mouseup", stop);
+        };
+
+        window.addEventListener("mousemove", drag);
+        window.addEventListener("mouseup", stop);
     });
+}
+
+function mouse_position(event, viewport) {
+    const location = get_location_from_mouse(event, viewport);
+    return location_to_position(location.line, location.column);
 }

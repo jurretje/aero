@@ -1,4 +1,6 @@
-#[derive(Debug, Clone, Copy)]
+use serde::Serialize;
+
+#[derive(Debug, Clone, Copy, Serialize)]
 pub enum Style {
     Keyword,
     Type,
@@ -16,7 +18,6 @@ impl Style {
             Style::Operator => "\x1b[38;2;255;184;108m",
             Style::Punctuation => "\x1b[38;2;98;114;164m",
         };
-
         default
     }
 }

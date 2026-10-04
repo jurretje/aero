@@ -82,3 +82,23 @@ button:hover {
     background: white;
     pointer-events: none;
 }
+
+.keyword-token {
+    color: #FF79C6
+}
+
+.type-token {
+    color: #8BE9FD
+}
+
+.identifier-token {
+    color: #DCDCDC
+}
+
+.operator-token {
+    color: #FFB86C
+}
+
+.punctuation-token {
+    color: #6272A4
+}

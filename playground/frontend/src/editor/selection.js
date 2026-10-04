@@ -38,7 +38,7 @@ export function position_to_location(position) {
     return { line, column };
 }
 
-export function locationToPosition(line, column) {
+export function location_to_position(line, column) {
     return (
         lines()
             .slice(0, line)

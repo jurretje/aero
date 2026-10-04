@@ -1,11 +1,11 @@
 import { editor } from "./state.js";
 import {
     position_to_location,
-    locationToPosition,
+    location_to_position,
 } from "./selection.js";
-import { normalizeCursors } from "./editing.js";
+import { normalize_cursors } from "./editing.js";
 
-export function moveCursors(key, selecting) {
+export function move_cursors(key, selecting) {
     for (const cursor of editor.cursors) {
         let position = cursor.position;
 
@@ -21,11 +21,11 @@ export function moveCursors(key, selecting) {
         }
 
         if (key === "ArrowUp") {
-            position = moveVertical(position, -1);
+            position = move_vertical(position, -1);
         }
 
         if (key === "ArrowDown") {
-            position = moveVertical(position, 1);
+            position = move_vertical(position, 1);
         }
 
         cursor.position = position;
@@ -35,10 +35,10 @@ export function moveCursors(key, selecting) {
         }
     }
 
-    normalizeCursors();
+    normalize_cursors();
 }
 
-function moveVertical(position, direction) {
+function move_vertical(position, direction) {
     const { line, column } =
         position_to_location(position);
 
@@ -58,7 +58,7 @@ function moveVertical(position, direction) {
         lines[newLine].length
     );
 
-    return locationToPosition(
+    return location_to_position(
         newLine,
         newColumn
     );
