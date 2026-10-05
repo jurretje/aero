@@ -4,6 +4,22 @@ import { location_to_position, } from "../editor/selection.js";
 import { render } from "./render.js";
 import { get_location_from_mouse } from "./mouse.js";
 
+const commands = {
+
+};
+
+function register_command(f, prevent_default) {
+    
+}
+
+function handle_command(event) {
+    for (const command of commands) {
+        if (commands.condition(event)) {
+            
+        }
+    }
+}
+
 export function setup_input(input, viewport) {
     const update = () => render(viewport);
 
@@ -17,7 +33,6 @@ export function setup_input(input, viewport) {
             lower === "a"
         ) {
             event.preventDefault();
-
             select_all();
         } else if (key.startsWith("Arrow")) {
             event.preventDefault();

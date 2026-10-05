@@ -86,7 +86,7 @@ function render_line(text, line_number) {
 
     function append_cursors() {
         for (const cursor of editor.cursors) {
-            const location = position_to_location(cursor);
+            const location = position_to_location(cursor.position);
 
             if (location.line !== line_number) {
                 continue;

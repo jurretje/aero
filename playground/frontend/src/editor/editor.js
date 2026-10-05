@@ -2,9 +2,11 @@ import { editor, save, SETTINGS } from "./state.js";
 import {
     selection_start,
     selection_end,
-    has_selection,
+    set_selection,
     position_to_location,
 } from "./selection.js";
+
+import { move_cursors } from "./movement.js";
 
 export function insert_text(text) {
     const cursors = [...editor.cursors]

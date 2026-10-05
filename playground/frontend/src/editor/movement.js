@@ -3,7 +3,7 @@ import {
     position_to_location,
     location_to_position,
 } from "./selection.js";
-import { normalize_cursors } from "./editing.js";
+import { normalize_cursors } from "./editor.js";
 
 export function move_cursors(key, selecting) {
     for (const cursor of editor.cursors) {
