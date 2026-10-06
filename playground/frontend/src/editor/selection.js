@@ -23,6 +23,13 @@ export function set_selection(position, anchor = position) {
     editor.cursors = [{ position, anchor }];
 }
 
+export async function copy_selection() {
+    const selections = editor.cursors.filter(cursor => cursor.position !== cursor.anchor).map(selected_text);
+    if (selections.length === 0) return;
+
+    await navigator.clipboard.writeText(selections.join("\n"));
+}
+
 export function position_to_location(position) {
     const before = editor.text.slice(0, position);
 

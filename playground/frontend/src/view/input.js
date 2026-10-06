@@ -1,6 +1,6 @@
 import { editor } from "../editor/state.js";
 import { handle_enter, handle_tab, select_all, handle_backspace, handle_arrow, add_cursor, insert_text } from "../editor/editor.js";
-import { location_to_position, } from "../editor/selection.js";
+import { copy_selection, location_to_position, } from "../editor/selection.js";
 import { render } from "./render.js";
 import { get_location_from_mouse } from "./mouse.js";
 
@@ -50,6 +50,9 @@ export function setup_input(input, viewport) {
         } else if (key === "Enter") {
             event.preventDefault();
             handle_enter();
+        } else if (ctrlKey && lower == "c") {
+            event.preventDefault();
+            void copy_selection();
         }
         else if (
             key.length === 1 &&
