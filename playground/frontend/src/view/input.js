@@ -3,6 +3,7 @@ import { handle_enter, handle_tab, select_all, handle_backspace, handle_arrow, a
 import { copy_selection, location_to_position, } from "../editor/selection.js";
 import { render } from "./render.js";
 import { get_location_from_mouse } from "./mouse.js";
+import { analyze } from "../main.js";
 
 const commands = {
 
@@ -21,7 +22,10 @@ function handle_command(event) {
 }
 
 export function setup_input(input, viewport) {
-    const update = () => render(viewport);
+    const update = () => {
+        analyze();
+        render(viewport);
+    };
 
     input.addEventListener("keydown", event => {
         const { key, ctrlKey, metaKey, altKey, shiftKey } = event;

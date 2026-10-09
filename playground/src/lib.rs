@@ -3,10 +3,10 @@ use std::net::SocketAddr;
 use axum::{Json, Router, routing::post};
 use serde::{Deserialize, Serialize};
 use syntax::{
-    lexer::{self, Lexer},
+    lexer::{Lexer},
     source::Span,
     style::Style,
-    token::{Token, TokenKind},
+    token::{TokenKind},
 };
 use tower_http::services::ServeDir;
 
@@ -17,13 +17,13 @@ struct Cursor {
 }
 
 #[derive(Debug, Deserialize)]
-struct CompileRequest {
+struct AnalysisRequest {
     source: String,
     cursors: Vec<Cursor>,
 }
 
 #[derive(Debug, Serialize)]
-struct CompileResponse {
+struct AnalysisResponse {
     success: bool,
     tokens: Vec<StylizedToken>,
 }
@@ -35,7 +35,7 @@ pub struct StylizedToken {
     style: Style,
 }
 
-async fn compile(Json(request): Json<CompileRequest>) -> Json<CompileResponse> {
+async fn analyze_code(Json(request): Json<AnalysisRequest>) -> Json<AnalysisResponse> {
     let mut lexer = Lexer::new(&request.source);
 
     let tokens = lexer.tokens();
@@ -48,7 +48,7 @@ async fn compile(Json(request): Json<CompileRequest>) -> Json<CompileResponse> {
         })
         .collect();
 
-    Json(CompileResponse {
+    Json(AnalysisResponse {
         success: true,
         tokens,
     })
@@ -57,7 +57,7 @@ async fn compile(Json(request): Json<CompileRequest>) -> Json<CompileResponse> {
 pub async fn run_playground(addr: SocketAddr) -> Result<(), Box<dyn std::error::Error>> {
 
     let app = Router::new()
-        .route("/api/compile", post(compile))
+        .route("/api/analysis", post(analyze_code))
         .fallback_service(ServeDir::new("./playground/frontend"));
 
     let listener = tokio::net::TcpListener::bind(addr).await?;

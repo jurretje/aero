@@ -3,7 +3,8 @@ const STORAGE_KEY = "aero-playground-source";
 
 
 export const SETTINGS = {
-    tabSize: 4
+    tabSize: 4,
+    selectionMode: "text",
 };
 
 export const editor = {

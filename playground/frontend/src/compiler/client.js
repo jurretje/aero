@@ -1,5 +1,5 @@
-export async function request_compile(source, cursors) {
-    const response = await fetch("/api/compile", {
+export async function request_analysis(source, cursors) {
+    const response = await fetch("/api/analysis", {
         method: "POST",
 
         headers: {

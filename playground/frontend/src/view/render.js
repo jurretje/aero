@@ -1,4 +1,4 @@
-import { editor } from "../editor/state.js";
+import { editor, SETTINGS } from "../editor/state.js";
 import {
     selection_start as selection_start,
     selection_end as selection_end,
@@ -27,10 +27,29 @@ function render_line(text, line_number) {
     const line_start = location_to_position(line_number, 0);
     const line_end = line_start + text.length;
 
+    const selections  = editor.cursors.map(cursor => ({
+        start: selection_start(cursor),
+        end: selection_end(cursor)
+    }));
+
+    const is_selected = (start, end) => {
+        return editor.cursors.some(cursor =>
+            (line_start + start) < selection_end(cursor) &&
+            (line_start + end) > selection_start(cursor)
+        );
+    }; 
+
+
     const append = (content, column, token = null) => {
         const span = document.createElement("span");
-        span.className = token ? `token ${token.style.toLowerCase()}-token` : "token";
+        if (token) {
+            span.className = `${token.style.toLowerCase()}-token`;
+        }
         span.textContent = content;
+
+        if (SETTINGS.selectionMode === "token") {
+            
+        }
 
         if (is_selected(column, column + content.length)) {
             span.classList.add("selected");
@@ -39,12 +58,6 @@ function render_line(text, line_number) {
         line.appendChild(span);
     };
 
-    const is_selected = (start, end) => {
-        return editor.cursors.some(cursor =>
-            (line_start + start) < selection_end(cursor) &&
-            (line_start + end) > selection_start(cursor)
-        );
-    };
 
     if (!compile_result) {
         append(text, 0);
