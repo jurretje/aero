@@ -55,10 +55,11 @@ async fn analyze_code(Json(request): Json<AnalysisRequest>) -> Json<AnalysisResp
 }
 
 pub async fn run_playground(addr: SocketAddr) -> Result<(), Box<dyn std::error::Error>> {
+    let frontend_dir = "./playground/frontend/";
 
     let app = Router::new()
         .route("/api/analysis", post(analyze_code))
-        .fallback_service(ServeDir::new("./playground/frontend"));
+        .fallback_service(ServeDir::new(frontend_dir));
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
     

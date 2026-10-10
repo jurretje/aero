@@ -1,8 +1,23 @@
 
 const STORAGE_KEY = "aero-playground-source";
 
+export type Settings = {
+    tabSize: number;
+    selectionMode: "text" | "token";
+};
 
-export const SETTINGS = {
+export type Cursor = {
+    position: number;
+    anchor: number;
+}
+
+export type Editor = {
+    text: string;
+    cursors: Cursor[];
+    focused: boolean;
+};
+
+export const SETTINGS: Settings = {
     tabSize: 4,
     selectionMode: "text",
 };

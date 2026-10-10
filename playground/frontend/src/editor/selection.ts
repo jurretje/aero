@@ -1,25 +1,25 @@
-import { editor, lines } from "./state.js";
+import { Cursor, editor, lines } from "./state.js";
 
-export function selection_start(cursor) {
+export function selection_start(cursor: Cursor) {
     return Math.min(cursor.position, cursor.anchor);
 }
 
-export function selection_end(cursor) {
+export function selection_end(cursor: Cursor) {
     return Math.max(cursor.position, cursor.anchor);
 }
 
-export function has_selection(cursor) {
+export function has_selection(cursor: Cursor) {
     return selection_start(cursor) !== selection_end(cursor);
 }
 
-export function selected_text(cursor) {
+export function selected_text(cursor: Cursor) {
     return editor.text.slice(
         selection_start(cursor),
         selection_end(cursor)
     );
 }
 
-export function set_selection(position, anchor = position) {
+export function set_selection(position: number, anchor = position) {
     editor.cursors = [{ position, anchor }];
 }
 
@@ -30,7 +30,7 @@ export async function copy_selection() {
     await navigator.clipboard.writeText(selections.join("\n"));
 }
 
-export function position_to_location(position) {
+export function position_to_location(position: number) {
     const before = editor.text.slice(0, position);
 
     const line = before.split("\n").length - 1;
@@ -45,7 +45,7 @@ export function position_to_location(position) {
     return { line, column };
 }
 
-export function location_to_position(line, column) {
+export function location_to_position(line: number, column: number) {
     return (
         lines()
             .slice(0, line)

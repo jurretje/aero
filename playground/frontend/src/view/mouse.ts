@@ -1,6 +1,6 @@
 import { editor } from "../editor/state.js";
 
-export function get_location_from_mouse(event, viewport) {
+export function get_location_from_mouse(event: MouseEvent, viewport: HTMLElement) {
     const rect = viewport.getBoundingClientRect();
 
     const x = event.clientX - rect.left;
@@ -18,12 +18,12 @@ export function get_location_from_mouse(event, viewport) {
         Math.min(line, lines.length - 1)
     );
 
-    const text = lines[line];
+    const text = lines[line] ?? "";
 
     const style = getComputedStyle(viewport);
 
     const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d");
+    const context = canvas.getContext("2d")!;
 
     context.font = `${style.fontSize} ${style.fontFamily}`;
 

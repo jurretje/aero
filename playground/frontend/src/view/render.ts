@@ -1,46 +1,41 @@
 import { editor, SETTINGS } from "../editor/state.js";
-import {
-    selection_start as selection_start,
-    selection_end as selection_end,
-    position_to_location as position_to_location,
-    location_to_position,
-} from "../editor/selection.js";
+import { selection_start, selection_end, position_to_location, location_to_position } from "../editor/selection.js";
 
-import { compile_result } from "../main.js";
+import { compile_result, StyledToken } from "../compiler/client.js";
 
-export function render(viewport) {
+export function render(viewport: HTMLElement) {
     viewport.innerHTML = "";
 
     const lines = editor.text.split("\n");
 
     for (let line_number = 0; line_number < lines.length; line_number++) {
         viewport.appendChild(
-            render_line(lines[line_number], line_number)
+            render_line((lines[line_number] ?? ""), line_number)
         );
     }
 }
 
-function render_line(text, line_number) {
+function render_line(text: string, line_number: number) {
     const line = document.createElement("div");
     line.className = "line-of-code";
 
     const line_start = location_to_position(line_number, 0);
     const line_end = line_start + text.length;
 
-    const selections  = editor.cursors.map(cursor => ({
+    const selections = editor.cursors.map(cursor => ({
         start: selection_start(cursor),
         end: selection_end(cursor)
     }));
 
-    const is_selected = (start, end) => {
+    const is_selected = (start: number, end: number) => {
         return editor.cursors.some(cursor =>
             (line_start + start) < selection_end(cursor) &&
             (line_start + end) > selection_start(cursor)
         );
-    }; 
+    };
 
 
-    const append = (content, column, token = null) => {
+    const append = (content: string, column: number, token: StyledToken | null = null) => {
         const span = document.createElement("span");
         if (token) {
             span.className = `${token.style.toLowerCase()}-token`;
@@ -48,7 +43,7 @@ function render_line(text, line_number) {
         span.textContent = content;
 
         if (SETTINGS.selectionMode === "token") {
-            
+
         }
 
         if (is_selected(column, column + content.length)) {

@@ -5,7 +5,7 @@ import {
 } from "./selection.js";
 import { normalize_cursors } from "./editor.js";
 
-export function move_cursors(key, selecting) {
+export function move_cursors(key: any, selecting: boolean) {
     for (const cursor of editor.cursors) {
         let position = cursor.position;
 
@@ -38,28 +38,28 @@ export function move_cursors(key, selecting) {
     normalize_cursors();
 }
 
-function move_vertical(position, direction) {
+function move_vertical(position: number, direction: number) {
     const { line, column } =
         position_to_location(position);
 
     const lines = editor.text.split("\n");
 
-    const newLine = line + direction;
+    const new_line = line + direction;
 
     if (
-        newLine < 0 ||
-        newLine >= lines.length
+        new_line < 0 ||
+        new_line >= lines.length
     ) {
         return position;
     }
 
-    const newColumn = Math.min(
+    const new_column = Math.min(
         column,
-        lines[newLine].length
+        (lines[new_line] ?? "").length
     );
 
     return location_to_position(
-        newLine,
-        newColumn
+        new_line,
+        new_column
     );
 }

@@ -3,31 +3,15 @@ import { handle_enter, handle_tab, select_all, handle_backspace, handle_arrow, a
 import { copy_selection, location_to_position, } from "../editor/selection.js";
 import { render } from "./render.js";
 import { get_location_from_mouse } from "./mouse.js";
-import { analyze } from "../main.js";
+import { analyze } from "../compiler/client.js";
 
-const commands = {
-
-};
-
-function register_command(f, prevent_default) {
-    
-}
-
-function handle_command(event) {
-    for (const command of commands) {
-        if (commands.condition(event)) {
-            
-        }
-    }
-}
-
-export function setup_input(input, viewport) {
+export function setup_input(input: HTMLElement, viewport: HTMLElement) {
     const update = () => {
         analyze();
         render(viewport);
     };
 
-    input.addEventListener("keydown", event => {
+    input.addEventListener("keydown", (event: KeyboardEvent) => {
         const { key, ctrlKey, metaKey, altKey, shiftKey } = event;
         const lower = event.key.toLowerCase();
 
@@ -80,19 +64,24 @@ export function setup_input(input, viewport) {
         update();
     });
 
-    input.addEventListener("mousedown", event => {
+    input.addEventListener("mousedown", (event: MouseEvent) => {
         const position = mouse_position(event, viewport);
 
         const cursor = event.altKey
             ? add_cursor(position)
-            : (editor.cursors = [{ position, anchor: position }], editor.cursors[0]);
+            : { position, anchor: position };
+
+        if (!event.altKey) {
+            editor.cursors = [cursor];
+        }
 
         input.focus({
             preventScroll: true,
         });
+
         update();
 
-        const drag = event => {
+        const drag = (event: MouseEvent) => {
             const position = mouse_position(event, viewport);
             cursor.position = position;
             update();
@@ -108,7 +97,7 @@ export function setup_input(input, viewport) {
     });
 }
 
-function mouse_position(event, viewport) {
+function mouse_position(event: MouseEvent, viewport: HTMLElement) {
     const location = get_location_from_mouse(event, viewport);
     return location_to_position(location.line, location.column);
 }

@@ -1,4 +1,4 @@
-import { editor, save, SETTINGS } from "./state.js";
+import { Cursor, editor, save, SETTINGS } from "./state.js";
 import {
     selection_start,
     selection_end,
@@ -8,7 +8,7 @@ import {
 
 import { move_cursors } from "./movement.js";
 
-export function insert_text(text) {
+export function insert_text(text: string) {
     const cursors = [...editor.cursors]
         .sort(
             (a, b) =>
@@ -33,45 +33,43 @@ export function insert_text(text) {
     save();
 }
 
+
+type Edit = {
+    start: number;
+    end: number;
+    text: string;
+};
+
 export function backspace() {
-    const edits = editor.cursors
-        .map(cursor => {
-            const start = selection_start(cursor);
-            const end = selection_end(cursor);
+    const edits = editor.cursors.flatMap(cursor => {
+        const start = selection_start(cursor);
+        const end = selection_end(cursor);
 
-            if (start !== end) {
-                cursor.position = start;
-                cursor.anchor = start;
+        if (start !== end) {
+            cursor.position = start;
+            cursor.anchor = start;
 
-                return {
-                    start,
-                    end,
-                    text: "",
-                };
-            }
+            return [{ start, end, text: "" }];
+        }
 
-            if (cursor.position === 0) {
-                return null;
-            }
+        if (cursor.position === 0) {
+            return [];
+        }
 
-            const position = cursor.position;
+        const position = cursor.position;
 
-            cursor.position--;
-            cursor.anchor--;
+        cursor.position--;
+        cursor.anchor--;
 
-            return {
-                start: position - 1,
-                end: position,
-                text: "",
-            };
-        })
-        .filter(Boolean);
+        return [{ start: position - 1, end: position, text: "" }];
+    });
 
     replace_ranges(edits);
 
     normalize_cursors();
     save();
 }
+
 
 export function handle_enter() {
     insert_text("\n");
@@ -90,7 +88,7 @@ export function handle_tab() {
     }
 }
 
-export function replace_ranges(edits) {
+export function replace_ranges(edits: Edit[]) {
     edits.sort((a, b) => b.start - a.start);
 
     for (const edit of edits) {
@@ -125,13 +123,15 @@ export function handle_backspace() {
     backspace();
 }
 
-export function handle_arrow(key, selecting) {
+export function handle_arrow(key: any, selecting: any) {
     move_cursors(key, selecting);
 }
 
-export function add_cursor(position) {
-    if (editor.cursors.some(cursor => cursor.position === position)) {
-        return;
+export function add_cursor(position: number): Cursor {
+    const existing = editor.cursors.find(cursor => cursor.position === position);
+
+    if (existing) {
+        return existing;
     }
 
     const cursor = {
