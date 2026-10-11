@@ -1,3 +1,4 @@
+import { Location } from "../compiler/client.js";
 import { Cursor, editor, lines } from "./state.js";
 
 export function selection_start(cursor: Cursor) {
@@ -23,29 +24,22 @@ export function set_selection(position: number, anchor = position) {
     editor.cursors = [{ position, anchor }];
 }
 
-export async function copy_selection() {
-    const selections = editor.cursors.filter(cursor => cursor.position !== cursor.anchor).map(selected_text);
-    if (selections.length === 0) return;
-
-    await navigator.clipboard.writeText(selections.join("\n"));
-}
-
-export function position_to_location(position: number) {
+export function position_to_location(position: number): Location {
     const before = editor.text.slice(0, position);
 
     const line = before.split("\n").length - 1;
 
-    const lastNewline = before.lastIndexOf("\n");
+    const last_new_line = before.lastIndexOf("\n");
 
     const column =
-        lastNewline === -1
+        last_new_line === -1
             ? position
-            : position - lastNewline - 1;
+            : position - last_new_line - 1;
 
-    return { line, column };
+    return { line, column, pos: position };
 }
 
-export function location_to_position(line: number, column: number) {
+export function location_to_position(line: number, column: number): number {
     return (
         lines()
             .slice(0, line)

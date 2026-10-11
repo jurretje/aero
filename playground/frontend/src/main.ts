@@ -1,4 +1,4 @@
-import { setup_input } from "./view/input.js";
+import { setup_input } from "./input/input.js";
 import { render } from "./view/render.js";
 import { analyze } from "./compiler/client.js";
 

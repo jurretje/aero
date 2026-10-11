@@ -2,19 +2,32 @@ import { Cursor, editor } from "../editor/state.js";
 
 type CompileResult = {
     success: boolean;
-    tokens: StyledToken[] 
+    tokens: StyledToken[],
+    ast: Node | null
+};
+
+type Node = {
+    kind: any;
+    span: Span;
+    children: Node[];
 };
 
 export type StyledToken = {
     kind: string;
-    span: any;
-    style: any;
+    span: Span;
+    style: string;
 };
 
-type Span = {
-    start: any;
-    end: any;
+export type Span = {
+    start: Location;
+    end: Location;
 };
+
+export type Location = {
+    pos: number;
+    line: number;
+    column: number;
+}
 
 export let compile_result: CompileResult | null = null;
 
@@ -25,7 +38,7 @@ export async function analyze() {
             editor.cursors
         );
 
-        console.log(compile_result);
+        console.log(compile_result!.ast);
     } catch (error) {
         console.error(error);
     }

@@ -81,8 +81,8 @@ export function handle_tab() {
             position_to_location(cursor.position);
 
         const count =
-            SETTINGS.tabSize -
-            (column % SETTINGS.tabSize);
+            SETTINGS.tab_size -
+            (column % SETTINGS.tab_size);
 
         insert_text(" ".repeat(count));
     }
