@@ -4,7 +4,7 @@ use axum::{Json, Router, routing::post};
 use serde::{Deserialize, Serialize};
 use syntax::{
     grammar::{Grammar, build_grammar},
-    graph::GrammarGraphBuilder,
+    graph::{GrammarGraph, GrammarGraphBuilder},
     lexer::Lexer,
     node::Node,
     parser::{ParseCosts, build_ast, parse},
@@ -31,6 +31,7 @@ struct AnalysisResult {
     success: bool,
     tokens: Vec<StylizedToken>,
     ast: Option<Node>,
+    grammar_graph: Option<GrammarGraph>,
 }
 
 impl Default for AnalysisResult {
@@ -39,6 +40,7 @@ impl Default for AnalysisResult {
             success: false,
             tokens: vec![],
             ast: None,
+            grammar_graph: None,
         }
     }
 }
@@ -65,26 +67,27 @@ async fn analyze_code(Json(request): Json<AnalysisRequest>) -> Json<AnalysisResu
 
     let grammar = build_grammar();
     let graph = GrammarGraphBuilder::new(&grammar).build();
-    let Some(actions) = parse(
-        &graph,
-        &tokens,
-        ParseCosts {
-            insert: 2,
-            delete: 4,
-            replace: 5,
-        },
-    ) else {
-        return Json(AnalysisResult::default());
-    };
+    // let Some(actions) = parse(
+    //     &graph,
+    //     &tokens,
+    //     ParseCosts {
+    //         insert: 2,
+    //         delete: 4,
+    //         replace: 5,
+    //     },
+    // ) else {
+    //     return Json(AnalysisResult::default());
+    // };
 
-    let Some(ast) = build_ast(&actions, &tokens) else {
-        return Json(AnalysisResult::default());
-    };
+    // let Some(ast) = build_ast(&actions, &tokens) else {
+    //     return Json(AnalysisResult::default());
+    // };
 
     Json(AnalysisResult {
         success: true,
         tokens: styled_tokens,
-        ast: Some(ast),
+        ast: None,
+        grammar_graph: Some(graph),
     })
 }
 

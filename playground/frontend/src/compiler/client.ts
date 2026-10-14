@@ -1,9 +1,10 @@
 import { Cursor, editor } from "../editor/state.js";
 
-type CompileResult = {
+export type CompileResult = {
     success: boolean;
-    tokens: StyledToken[],
-    ast: Node | null
+    tokens: StyledToken[];
+    ast: Node | null;
+    grammar_graph: GrammarGraph | null;
 };
 
 type Node = {
@@ -11,6 +12,24 @@ type Node = {
     span: Span;
     children: Node[];
 };
+
+type GrammarGraph = {
+    states: State[];
+    start: State
+}
+
+type State = {
+    transitions: Transition[]
+}
+
+type Transition = {
+
+}
+
+type TokenTransition = {
+    kind: string;
+    target: number;
+}
 
 export type StyledToken = {
     kind: string;
@@ -38,7 +57,7 @@ export async function analyze() {
             editor.cursors
         );
 
-        console.log(compile_result!.ast);
+        console.log(compile_result!.grammar_graph);
     } catch (error) {
         console.error(error);
     }

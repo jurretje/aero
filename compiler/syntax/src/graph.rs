@@ -1,5 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
+use serde::Serialize;
+
 use crate::{
     grammar::{Grammar, RuleKind, RuleName},
     token::TokenKind,
@@ -7,6 +9,7 @@ use crate::{
 
 pub type StateId = usize;
 
+#[derive(Serialize, Debug)]
 pub struct GrammarGraph {
     pub states: Vec<State>,
     pub start: StateId,
@@ -19,12 +22,12 @@ impl GrammarGraph {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Serialize, Debug)]
 pub struct State {
     pub transitions: Vec<Transition>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Debug)]
 pub enum Transition {
     Token {
         kind: TokenKind,
