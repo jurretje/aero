@@ -6,6 +6,7 @@ version = 4
 name = "aero"
 version = "0.1.0"
 dependencies = [
+ "cli",
  "playground",
  "syntax",
  "tokio",
@@ -86,6 +87,13 @@ name = "cfg-if"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
+
+[[package]]
+name = "cli"
+version = "0.1.0"
+dependencies = [
+ "pipeline",
+]
 
 [[package]]
 name = "errno"
@@ -342,6 +350,8 @@ checksum = "a89322df9ebe1c1578d689c92318e070967d1042b512afbe49518723f4e6d5cd"
 name = "pipeline"
 version = "0.1.0"
 dependencies = [
+ "serde",
+ "serde_json",
  "syntax",
 ]
 

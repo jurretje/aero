@@ -1,19 +1,13 @@
 use std::net::{Ipv4Addr, SocketAddr};
 
 #[tokio::main]
-async fn main() {
-    let args: Vec<String> = std::env::args().collect();
-
-    match args.get(1).map(String::as_str) {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    match std::env::args().nth(1).as_deref() {
         Some("server") => run_server().await,
-        Some("cli") => run_cli().await,
-        _ => {}
+        _ => cli::run_cli()?,
     }
-}
 
-pub async fn run_cli() {
-    
-    
+    Ok(())
 }
 
 pub async fn run_server() {

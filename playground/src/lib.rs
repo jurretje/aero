@@ -21,74 +21,13 @@ struct Cursor {
 }
 
 #[derive(Debug, Deserialize)]
-struct AnalysisRequest {
-    source: String,
-    cursors: Vec<Cursor>,
-}
+struct AnalysisRequest {}
 
 #[derive(Debug, Serialize)]
-struct AnalysisResult {
-    success: bool,
-    tokens: Vec<StylizedToken>,
-    ast: Option<Node>,
-    grammar_graph: Option<GrammarGraph>,
-}
+struct AnalysisResponse {}
 
-impl Default for AnalysisResult {
-    fn default() -> Self {
-        Self {
-            success: false,
-            tokens: vec![],
-            ast: None,
-            grammar_graph: None,
-        }
-    }
-}
-
-#[derive(Debug, Serialize)]
-pub struct StylizedToken {
-    kind: TokenKind,
-    span: Span,
-    style: Style,
-}
-
-async fn analyze_code(Json(request): Json<AnalysisRequest>) -> Json<AnalysisResult> {
-    let mut lexer = Lexer::new(&request.source);
-
-    let tokens = lexer.tokens();
-    let styled_tokens = tokens
-        .iter()
-        .map(|token| StylizedToken {
-            kind: token.kind,
-            span: token.span.clone(),
-            style: token.kind.style(),
-        })
-        .collect();
-
-    let grammar = build_grammar();
-    let graph = GrammarGraphBuilder::new(&grammar).build();
-    // let Some(actions) = parse(
-    //     &graph,
-    //     &tokens,
-    //     ParseCosts {
-    //         insert: 2,
-    //         delete: 4,
-    //         replace: 5,
-    //     },
-    // ) else {
-    //     return Json(AnalysisResult::default());
-    // };
-
-    // let Some(ast) = build_ast(&actions, &tokens) else {
-    //     return Json(AnalysisResult::default());
-    // };
-
-    Json(AnalysisResult {
-        success: true,
-        tokens: styled_tokens,
-        ast: None,
-        grammar_graph: Some(graph),
-    })
+async fn analyze_code(Json(request): Json<AnalysisRequest>) -> Json<AnalysisResponse> {
+    todo!()
 }
 
 #[derive(Deserialize)]

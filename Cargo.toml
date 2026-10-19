@@ -5,8 +5,9 @@ edition = "2024"
 
 [dependencies]
 syntax = { path = "compiler/syntax" }
+cli = { path = "compiler/cli" }
 playground = { path = "playground" }
 tokio = { version = "1.53.1", features = ["full"] }
 
 [workspace]
-members = ["compiler/pipeline", "compiler/syntax", "playground"]
+members = ["compiler/cli", "compiler/pipeline", "compiler/syntax", "playground"]

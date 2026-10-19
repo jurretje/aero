@@ -2,3 +2,4 @@
 /playground/frontend/node_modules
 /playground/frontend/dist
 /playground/frontend/package-lock.json
+/graph.dot

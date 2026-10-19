@@ -174,11 +174,7 @@ fn neighbors(
     result
 }
 
-pub fn parse(
-    graph: &GrammarGraph,
-    tokens: &[Token],
-    costs: ParseCosts,
-) -> Option<Vec<Action>> {
+pub fn parse(graph: &GrammarGraph, tokens: &[Token], costs: ParseCosts) -> Option<Vec<Action>> {
     let start = Config::from(graph);
 
     let mut queue = BinaryHeap::new();

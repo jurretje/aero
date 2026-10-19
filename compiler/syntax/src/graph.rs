@@ -140,8 +140,8 @@ impl<'g> GrammarGraphBuilder<'g> {
                 (entry, exit)
             }
             RuleKind::Question(inner) => {
-                self.compile_kind(inner, entry, entry);
-                (entry, entry)
+                self.compile_kind(inner, entry, exit);
+                (entry, exit)
             }
             RuleKind::Plus(inner) => {
                 let loop_entry = self.new_state();
@@ -150,8 +150,8 @@ impl<'g> GrammarGraphBuilder<'g> {
                 (entry, exit)
             }
             RuleKind::Star(inner) => {
-                self.compile_kind(inner, entry, entry);
-                (entry, entry)
+                self.compile_kind(inner, entry, exit);
+                (entry, exit)
             }
         }
     }
@@ -175,80 +175,4 @@ impl<'g> GrammarGraphBuilder<'g> {
 
         self.graph
     }
-}
-
-impl GrammarGraph {
-    pub fn to_dot(&self) -> String {
-        let mut out = String::new();
-
-        out.push_str("digraph GrammarGraph {\n");
-        out.push_str("    rankdir=LR;\n");
-        out.push_str("    node [shape=circle];\n");
-
-        for id in 0..self.states.len() {
-            let shape = if self.accepts(&id) {
-                "doublecircle"
-            } else {
-                "circle"
-            };
-
-            out.push_str(&format!("    s{id} [label=\"{id}\", shape={shape}];\n"));
-        }
-
-        out.push_str("    start [shape=point, label=\"\"];\n");
-        out.push_str(&format!("    start -> s{};\n", self.start));
-
-        for (from, state) in self.states.iter().enumerate() {
-            for transition in &state.transitions {
-                match transition {
-                    Transition::Token { kind, target } => {
-                        out.push_str(&format!(
-                            "    s{from} -> s{target} [label=\"{}\"];\n",
-                            escape_dot(&format!("{kind:?}")),
-                        ));
-                    }
-
-                    Transition::Call {
-                        name,
-                        entry,
-                        return_state,
-                    } => {
-                        out.push_str(&format!(
-                            "    s{from} -> s{entry} \
-                             [label=\"call {} ret s{return_state}\"];\n",
-                            escape_dot(&format!("{name:?}")),
-                        ));
-                    }
-
-                    Transition::Return { name } => {
-                        let return_node = format!("return_{from}_{}", name_hash(name));
-
-                        out.push_str(&format!(
-                            "    {return_node} \
-                             [shape=box, label=\"ret {}\"];\n",
-                            escape_dot(&format!("{name:?}")),
-                        ));
-                        out.push_str(&format!("    s{from} -> {return_node};\n"));
-                    }
-                }
-            }
-        }
-
-        out.push_str("}\n");
-        out
-    }
-}
-
-fn escape_dot(s: &str) -> String {
-    s.replace('\\', "\\\\")
-        .replace('"', "\\\"")
-        .replace('\n', "\\n")
-}
-
-fn name_hash(name: &RuleName) -> u64 {
-    use std::hash::{Hash, Hasher};
-
-    let mut hasher = std::collections::hash_map::DefaultHasher::new();
-    name.hash(&mut hasher);
-    hasher.finish()
 }
