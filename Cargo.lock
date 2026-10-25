@@ -360,6 +360,7 @@ name = "playground"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "pipeline",
  "serde",
  "serde_json",
  "syntax",

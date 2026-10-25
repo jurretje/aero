@@ -57,7 +57,7 @@ export async function analyze() {
             editor.cursors
         );
 
-        console.log(compile_result!.grammar_graph);
+        console.log(compile_result);
     } catch (error) {
         console.error(error);
     }

@@ -41,6 +41,9 @@ pub enum Transition {
     Return {
         name: RuleName,
     },
+    Epsilon {
+        target: StateId,
+    },
 }
 
 pub struct GrammarGraphBuilder<'g> {
@@ -135,22 +138,52 @@ impl<'g> GrammarGraphBuilder<'g> {
             }
             RuleKind::Alt(options) => {
                 for option in options {
-                    self.compile_kind(option, entry, exit);
+                    let branch_start = self.new_state();
+                    let branch_end = self.new_state();
+                    self.add_transition(
+                        entry,
+                        Transition::Epsilon {
+                            target: branch_start,
+                        },
+                    );
+                    self.compile_kind(option, branch_start, branch_end);
+                    self.add_transition(branch_end, Transition::Epsilon { target: exit });
                 }
                 (entry, exit)
             }
             RuleKind::Question(inner) => {
-                self.compile_kind(inner, entry, exit);
+                let inner_start = self.new_state();
+                let inner_end = self.new_state();
+
+                self.add_transition(entry, Transition::Epsilon { target: exit });
+
+                self.add_transition(entry, Transition::Epsilon { target: inner_start });
+                self.compile_kind(inner, inner_start, inner_end);
+
+                self.add_transition(inner_end, Transition::Epsilon { target: exit });
+
                 (entry, exit)
             }
             RuleKind::Plus(inner) => {
-                let loop_entry = self.new_state();
-                self.compile_kind(inner, entry, loop_entry);
-                self.compile_kind(inner, loop_entry, exit);
+                let inner_start = self.new_state();
+                let inner_end = self.new_state();
+
+                self.add_transition(entry, Transition::Epsilon { target: inner_start });
+                self.compile_kind(inner, inner_start, inner_end);
+                self.add_transition(inner_end, Transition::Epsilon { target: exit });
+                self.add_transition(inner_end, Transition::Epsilon { target: inner_start });
                 (entry, exit)
             }
             RuleKind::Star(inner) => {
-                self.compile_kind(inner, entry, exit);
+                let inner_start = self.new_state();
+                let inner_end = self.new_state();
+
+                self.add_transition(entry, Transition::Epsilon { target: exit });
+                self.add_transition(entry, Transition::Epsilon { target: inner_start });
+                self.compile_kind(inner, inner_start, inner_end);
+                self.add_transition(inner_end, Transition::Epsilon { target: exit });
+                self.add_transition(inner_end, Transition::Epsilon { target: inner_start });
+
                 (entry, exit)
             }
         }

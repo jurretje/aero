@@ -4,7 +4,6 @@ import { analyze } from "./compiler/client.js";
 
 
 async function main() {
-
     const run_button = document.getElementById("run-button")!;
     const viewport = document.getElementById("viewport")!;
     const input = document.getElementById("input")!;

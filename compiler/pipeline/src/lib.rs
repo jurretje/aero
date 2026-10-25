@@ -7,7 +7,7 @@ use syntax::{
     parser::{ParseCosts, build_ast, parse},
     source::Span,
     style::Style,
-    token::TokenKind,
+    token::{Token, TokenKind},
 };
 
 pub struct Compiler {
@@ -21,7 +21,11 @@ pub struct StylizedToken {
     style: Style,
 }
 
-pub struct Analysis {}
+#[derive(Debug, Serialize)]
+pub struct Analysis {
+    pub tokens: Vec<StylizedToken>,
+    pub parsed: Option<Node>,
+}
 
 pub struct CompileOutput {
     pub parsed: Option<Node>,
@@ -39,7 +43,25 @@ impl Compiler {
     }
 
     pub fn analyze(&self, source: &str) -> Analysis {
-        todo!()
+        let mut lexer = Lexer::new(source);
+        let tokens = lexer.tokens();
+
+        let grammar = build_grammar();
+        let grammar_graph = GrammarGraphBuilder::new(&grammar).build();
+        let parsed = parse(&grammar_graph, &tokens, self.parse_costs)
+            .and_then(|actions| build_ast(&actions, &tokens));
+
+        Analysis {
+            tokens: tokens
+                .iter()
+                .map(|t| StylizedToken {
+                    kind: t.kind,
+                    span: t.span.clone(),
+                    style: t.kind.style(),
+                })
+                .collect(),
+            parsed,
+        }
     }
 
     pub fn compile(&self, source: &str) -> CompileOutput {

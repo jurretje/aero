@@ -1,17 +1,9 @@
 use std::net::SocketAddr;
 
 use axum::{Json, Router, routing::post};
+use pipeline::{Compiler, StylizedToken};
 use serde::{Deserialize, Serialize};
-use syntax::{
-    grammar::{Grammar, build_grammar},
-    graph::{GrammarGraph, GrammarGraphBuilder},
-    lexer::Lexer,
-    node::Node,
-    parser::{ParseCosts, build_ast, parse},
-    source::Span,
-    style::Style,
-    token::TokenKind,
-};
+use syntax::{graph::GrammarGraph, node::Node};
 use tower_http::services::ServeDir;
 
 #[derive(Debug, Deserialize)]
@@ -21,13 +13,28 @@ struct Cursor {
 }
 
 #[derive(Debug, Deserialize)]
-struct AnalysisRequest {}
+struct AnalysisRequest {
+    source: String,
+}
 
 #[derive(Debug, Serialize)]
-struct AnalysisResponse {}
+struct AnalysisResponse {
+    success: bool,
+    tokens: Vec<StylizedToken>,
+    ast: Option<Node>,
+    grammar_graph: Option<GrammarGraph>,
+}
 
 async fn analyze_code(Json(request): Json<AnalysisRequest>) -> Json<AnalysisResponse> {
-    todo!()
+    let comp = Compiler::new();
+    let analysis = comp.analyze(&request.source);
+
+    Json(AnalysisResponse {
+        success: true,
+        tokens: analysis.tokens,
+        ast: analysis.parsed,
+        grammar_graph: None,
+    })
 }
 
 #[derive(Deserialize)]

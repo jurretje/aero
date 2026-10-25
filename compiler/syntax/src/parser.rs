@@ -161,6 +161,12 @@ fn neighbors(
             Transition::Token { kind, target } => {
                 result.extend(token_neighbors(config, kind, target, tokens, costs));
             }
+
+            Transition::Epsilon { target } => {
+                let mut next = config.clone();
+                next.state = target;
+                result.push((next, 0, Action::Epsilon));
+            }
         }
     }
 
@@ -189,7 +195,6 @@ pub fn parse(graph: &GrammarGraph, tokens: &[Token], costs: ParseCosts) -> Optio
     let mut previous = HashMap::new();
 
     while let Some(QueueEntry { cost, config }) = queue.pop() {
-        dbg!(&config);
         let ending_condition =
             graph.accepts(&config.state) && config.index == tokens.len() && config.stack.is_empty();
 
