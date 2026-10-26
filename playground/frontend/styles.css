@@ -1,5 +1,10 @@
 :root {
     font-family: "Inter", sans-serif;
+    --syntax-keyword: #FF79C6;
+    --syntax-type: #8BE9FD;
+    --syntax-identifier: #DCDCDC;
+    --syntax-operator: #FFB86C;
+    --syntax-punctuation: #6272A4;
 }
 
 * {
@@ -110,21 +115,21 @@ header {
 }
 
 .keyword-token {
-    color: #FF79C6
+    color: var(--syntax-keyword);
 }
 
 .type-token {
-    color: #8BE9FD
+    color: var(--syntax-type);
 }
 
 .identifier-token {
-    color: #DCDCDC
+    color: var(--syntax-identifier);
 }
 
 .operator-token {
-    color: #FFB86C
+    color: var(--syntax-operator);
 }
 
 .punctuation-token {
-    color: #6272A4
+    color: var(--syntax-punctuation);
 }

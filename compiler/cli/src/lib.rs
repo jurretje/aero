@@ -8,7 +8,7 @@ pub fn run_cli() -> Result<(), Box<dyn std::error::Error>> {
     let output = compiler.compile(&input);
 
     if let Some(node) = output.parsed {
-        let pretty_printed_node = node.highlighted(&input);
+        let pretty_printed_node = node.highlighted(&input, &compiler.options.theme.build());
         println!("{}", pretty_printed_node);
     }
 

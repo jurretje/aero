@@ -1,2 +1,2 @@
-def modus_ponens (A B : Prop) (ha : A) (h : A -> B) : B :=
+def modus_ponens (A B : Prop) (ha : A) (h : A > B) : B :=
     h ha

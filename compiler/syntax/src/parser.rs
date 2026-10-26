@@ -4,6 +4,8 @@ use std::{
     fmt::Debug,
 };
 
+use serde::{Deserialize, Serialize};
+
 use crate::{
     grammar::RuleName,
     graph::{GrammarGraph, StateId, Transition},
@@ -58,7 +60,7 @@ impl PartialOrd for QueueEntry {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct ParseCosts {
     pub insert: usize,
     pub delete: usize,

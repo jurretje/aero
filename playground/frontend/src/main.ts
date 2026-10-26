@@ -1,6 +1,6 @@
 import { setup_input } from "./input/input.js";
 import { render } from "./view/render.js";
-import { analyze } from "./compiler/client.js";
+import { analyze, init_request } from "./compiler/client.js";
 
 
 async function main() {
@@ -14,7 +14,7 @@ async function main() {
     );
 
     setup_input(input, viewport);
-    await analyze();
+    await init_request();
     render(viewport);
 }
 

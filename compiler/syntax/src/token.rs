@@ -2,7 +2,9 @@ use std::fmt::Debug;
 
 use serde::Serialize;
 
-use crate::{source::Span, style::Style};
+use crate::source::Span;
+
+use crate::theme::Style;
 
 #[derive(PartialEq, Eq, Clone, Serialize)]
 pub struct Token {

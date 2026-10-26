@@ -1,8 +1,6 @@
-
-
 use serde::Serialize;
 
-use crate::{grammar::RuleName, source::Span, token::TokenKind};
+use crate::{grammar::RuleName, source::Span, theme::Theme, token::TokenKind};
 
 #[derive(Debug, Serialize)]
 pub enum NodeKind {
@@ -28,16 +26,16 @@ impl Node {
         }
     }
 
-    pub fn highlighted(&self, input: &str) -> String {
+    pub fn highlighted(&self, input: &str, theme: &Theme) -> String {
         let mut out = String::new();
-        self.write_highlighted(input, &mut out);
+        self.write_highlighted(input, &mut out, theme);
         out
     }
 
-    fn write_highlighted(&self, input: &str, out: &mut String) {
+    fn write_highlighted(&self, input: &str, out: &mut String, theme: &Theme) {
         match self.kind {
             NodeKind::Token(kind) => {
-                out.push_str(kind.style().ansi());
+                out.push_str(&theme.color(kind.style()).ansi());
                 out.push_str(self.span.text(input));
                 out.push_str("\x1b[0m");
             }
@@ -50,7 +48,7 @@ impl Node {
                         out.push_str(&input[cursor..child.span.start.pos]);
                     }
 
-                    child.write_highlighted(input, out);
+                    child.write_highlighted(input, out, theme);
 
                     cursor = child.span.end.pos;
                 }

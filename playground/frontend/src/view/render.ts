@@ -1,7 +1,7 @@
 import { editor, SETTINGS } from "../editor/state.js";
 import { selection_start, selection_end, position_to_location, location_to_position } from "../editor/selection.js";
 
-import { compile_result, StyledToken } from "../compiler/client.js";
+import { analysis_result, StyledToken } from "../compiler/client.js";
 
 type Selection = {
     start: number,
@@ -38,7 +38,7 @@ function render_line(text: string, line_number: number) {
     const line_start = location_to_position(line_number, 0);
     const line_end = line_start + text.length;
 
-    const tokens = (compile_result?.tokens ?? []).filter(token =>
+    const tokens = (analysis_result?.tokens ?? []).filter(token =>
         token.span.start.pos < line_end &&
         token.span.end.pos > line_start
     );

@@ -1,17 +1,37 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use syntax::{
     grammar::build_grammar,
-    graph::GrammarGraphBuilder,
+    graph::{GrammarGraph, GrammarGraphBuilder},
     lexer::Lexer,
     node::Node,
     parser::{ParseCosts, build_ast, parse},
     source::Span,
-    style::Style,
-    token::{Token, TokenKind},
+    theme::{Style, ThemeName},
+    token::TokenKind,
 };
 
 pub struct Compiler {
-    parse_costs: ParseCosts,
+    pub options: CompilerOptions,
+    pub grammar_graph: GrammarGraph,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompilerOptions {
+    pub parse_costs: ParseCosts,
+    pub theme: ThemeName,
+}
+
+impl Default for CompilerOptions {
+    fn default() -> Self {
+        Self {
+            parse_costs: ParseCosts {
+                insert: 2,
+                delete: 4,
+                replace: 5,
+            },
+            theme: ThemeName::TokyoNight,
+        }
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -33,12 +53,11 @@ pub struct CompileOutput {
 
 impl Compiler {
     pub fn new() -> Self {
+        let grammar_graph = GrammarGraphBuilder::new(&build_grammar()).build();
+
         Self {
-            parse_costs: ParseCosts {
-                insert: 2,
-                delete: 4,
-                replace: 5,
-            },
+            options: CompilerOptions::default(),
+            grammar_graph,
         }
     }
 
@@ -46,18 +65,19 @@ impl Compiler {
         let mut lexer = Lexer::new(source);
         let tokens = lexer.tokens();
 
-        let grammar = build_grammar();
-        let grammar_graph = GrammarGraphBuilder::new(&grammar).build();
-        let parsed = parse(&grammar_graph, &tokens, self.parse_costs)
+        let parsed = parse(&self.grammar_graph, &tokens, self.options.parse_costs)
             .and_then(|actions| build_ast(&actions, &tokens));
 
         Analysis {
             tokens: tokens
                 .iter()
-                .map(|t| StylizedToken {
-                    kind: t.kind,
-                    span: t.span.clone(),
-                    style: t.kind.style(),
+                .map(|tok| {
+                    let style = tok.kind.style();
+                    StylizedToken {
+                        kind: tok.kind,
+                        span: tok.span.clone(),
+                        style,
+                    }
                 })
                 .collect(),
             parsed,
@@ -68,10 +88,7 @@ impl Compiler {
         let mut lexer = Lexer::new(source);
         let tokens = lexer.tokens();
 
-        let grammar = build_grammar();
-        let grammar_graph = GrammarGraphBuilder::new(&grammar).build();
-
-        let parsed = parse(&grammar_graph, &tokens, self.parse_costs)
+        let parsed = parse(&self.grammar_graph, &tokens, self.options.parse_costs)
             .and_then(|actions| build_ast(&actions, &tokens));
 
         CompileOutput { parsed }
