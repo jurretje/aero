@@ -20,7 +20,7 @@ impl Color {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum Style {
     Keyword,
-    Type,
+    Builtin,
     Identifier,
     Operator,
     Punctuation,
@@ -87,7 +87,7 @@ impl Theme {
     pub fn color(&self, style: Style) -> Color {
         match style {
             Style::Keyword => self.keyword,
-            Style::Type => self.type_name,
+            Style::Builtin => self.type_name,
             Style::Identifier => self.identifier,
             Style::Operator => self.operator,
             Style::Punctuation => self.punctuation,

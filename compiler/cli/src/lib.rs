@@ -12,5 +12,9 @@ pub fn run_cli() -> Result<(), Box<dyn std::error::Error>> {
         println!("{}", pretty_printed_node);
     }
 
+    if let Some(m) = output.surface {
+        dbg!(m);
+    }
+
     Ok(())
 }

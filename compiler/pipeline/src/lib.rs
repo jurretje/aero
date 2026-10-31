@@ -10,6 +10,11 @@ use syntax::{
     token::TokenKind,
 };
 
+use crate::diagnostics::Diagnostic;
+
+pub mod diagnostics;
+pub mod lowering;
+
 pub struct Compiler {
     pub options: CompilerOptions,
     pub grammar_graph: GrammarGraph,
@@ -29,7 +34,7 @@ impl Default for CompilerOptions {
                 delete: 4,
                 replace: 5,
             },
-            theme: ThemeName::TokyoNight,
+            theme: ThemeName::Feather,
         }
     }
 }
@@ -49,6 +54,8 @@ pub struct Analysis {
 
 pub struct CompileOutput {
     pub parsed: Option<Node>,
+    pub surface: Option<surface::Module>,
+    pub diagnostics: Vec<Diagnostic>,
 }
 
 impl Compiler {
@@ -65,7 +72,10 @@ impl Compiler {
         let mut lexer = Lexer::new(source);
         let tokens = lexer.tokens();
 
-        let parsed = parse(&self.grammar_graph, &tokens, self.options.parse_costs)
+        let parser_output = parse(&self.grammar_graph, &tokens, self.options.parse_costs);
+
+        let ast = parser_output
+            .actions
             .and_then(|actions| build_ast(&actions, &tokens));
 
         Analysis {
@@ -80,7 +90,7 @@ impl Compiler {
                     }
                 })
                 .collect(),
-            parsed,
+            parsed: ast,
         }
     }
 
@@ -88,9 +98,42 @@ impl Compiler {
         let mut lexer = Lexer::new(source);
         let tokens = lexer.tokens();
 
-        let parsed = parse(&self.grammar_graph, &tokens, self.options.parse_costs)
-            .and_then(|actions| build_ast(&actions, &tokens));
+        dbg!(&tokens);
 
-        CompileOutput { parsed }
+        let parser_output = parse(&self.grammar_graph, &tokens, self.options.parse_costs);
+
+        let Some(actions) = parser_output.actions else {
+            return CompileOutput {
+                parsed: None,
+                surface: None,
+                diagnostics: vec![],
+            };
+        };
+
+        let syntax = build_ast(&actions, &tokens);
+
+        let Some(syntax) = syntax else {
+            return CompileOutput {
+                parsed: None,
+                surface: None,
+                diagnostics: vec![],
+            };
+        };
+
+        let mut diagnostics = Vec::new();
+
+        let surface = match lowering::lower(&syntax, source) {
+            Ok(module) => Some(module),
+            Err(errors) => {
+                diagnostics.extend(errors);
+                None
+            }
+        };
+
+        CompileOutput {
+            parsed: Some(syntax),
+            surface,
+            diagnostics,
+        }
     }
 }

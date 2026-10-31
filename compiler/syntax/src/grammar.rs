@@ -174,7 +174,7 @@ pub fn build_grammar() -> Grammar {
                     Rk::Ref(RuleName::Lambda),
                     Rk::Ref(RuleName::Forall),
                     Rk::Token(TokenKind::Prop),
-                    Rk::Token(TokenKind::Type),
+                    Rk::Token(TokenKind::Sort),
                 ]),
             },
             Rule {

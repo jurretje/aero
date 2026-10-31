@@ -18,7 +18,7 @@ pub enum TokenKind {
     Elim,
     Def,
     Prop,
-    Type,
+    Sort,
     Assign,
     OpenParen,
     CloseParen,
@@ -41,7 +41,7 @@ impl TokenKind {
 
         match self {
             Ind | Elim | Def | Fn | Forall => Style::Keyword,
-            Prop | Type => Style::Type,
+            Prop | Sort => Style::Builtin,
             Ident => Style::Identifier,
             Assign | Arrow | FatArrow => Style::Operator,
             OpenParen | CloseParen | OpenBrace | CloseBrace | Colon | Pipe | Comma | Dot => {
@@ -85,7 +85,7 @@ impl TokenKind {
     pub fn all() -> &'static [TokenKind] {
         use TokenKind::*;
         &[
-            Ind, Elim, Def, Prop, Type, Assign, OpenParen, CloseParen, OpenBrace, CloseBrace,
+            Ind, Elim, Def, Prop, Sort, Assign, OpenParen, CloseParen, OpenBrace, CloseBrace,
             Colon, Pipe, Arrow, FatArrow, Fn, Forall, Comma, Ident, Dot,
         ]
     }
@@ -97,7 +97,7 @@ impl TokenKind {
             Elim => "elim",
             Def => "def",
             Prop => "Prop",
-            Type => "Type",
+            Sort => "Sort",
             Assign => ":=",
             OpenParen => "(",
             CloseParen => ")",

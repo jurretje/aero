@@ -1,2 +1,6 @@
-def modus_ponens (A B : Prop) (ha : A) (h : A > B) : B :=
+ind Prod (a : Sort u) (b : Sort v) : Sort (max u v) :=
+| mk : a -> b -> Self
+elim rec
+
+def modus_ponens {A B : Prop} (ha : A) (h : A -> B) : B :=
     h ha

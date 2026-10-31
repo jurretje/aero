@@ -2,14 +2,14 @@ use std::fmt::Debug;
 
 use serde::Serialize;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Hash)]
 pub struct Location {
     pub pos: usize,
     pub line: usize,
     pub column: usize,
 }
 
-#[derive(Clone, PartialEq, Eq, Serialize)]
+#[derive(Clone, PartialEq, Eq, Serialize, Hash)]
 pub struct Span {
     pub start: Location,
     pub end: Location,

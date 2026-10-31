@@ -2,7 +2,7 @@ use serde::Serialize;
 
 use crate::{grammar::RuleName, source::Span, theme::Theme, token::TokenKind};
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, PartialEq, Eq)]
 pub enum NodeKind {
     Token(TokenKind),
     Rule(RuleName),
@@ -16,16 +16,6 @@ pub struct Node {
 }
 
 impl Node {
-    pub fn dump(&self, indent: usize) {
-        let padding = " ".repeat(indent);
-
-        println!("{padding}{:?}", self.kind);
-
-        for child in &self.children {
-            child.dump(indent + 1);
-        }
-    }
-
     pub fn highlighted(&self, input: &str, theme: &Theme) -> String {
         let mut out = String::new();
         self.write_highlighted(input, &mut out, theme);
