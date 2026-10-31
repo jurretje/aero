@@ -1,7 +1,9 @@
-use crate::{binder::BinderGroup, ident::Ident};
+use crate::{Spanned, binder::BinderGroup, ident::Ident};
+
+pub type Expr = Spanned<ExprKind>;
 
 #[derive(Debug, Clone)]
-pub enum Expr {
+pub enum ExprKind {
     Identifier(Ident),
     Sort(Sort),
     Application {
