@@ -2,13 +2,13 @@ use serde::Serialize;
 
 use crate::{grammar::RuleName, source::Span, theme::Theme, token::TokenKind};
 
-#[derive(Debug, Serialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, PartialEq, Eq, Clone)]
 pub enum NodeKind {
     Token(TokenKind),
     Rule(RuleName),
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct Node {
     pub kind: NodeKind,
     pub span: Span,

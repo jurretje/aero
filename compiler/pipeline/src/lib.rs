@@ -132,6 +132,7 @@ impl Compiler {
         };
 
         // dbg!(&surface);
+        // dbg!(&diagnostics);
 
         CompileOutput {
             parsed: Some(syntax),

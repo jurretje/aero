@@ -1,0 +1,2 @@
+def modus_ponens {A B : Prop} (h : A -> B) (h : A) : B :=
+    h ha

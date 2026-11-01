@@ -33,6 +33,7 @@ pub enum TokenKind {
     Forall,
     Comma,
     Dot,
+    SelfType,
 }
 
 impl TokenKind {
@@ -40,7 +41,7 @@ impl TokenKind {
         use TokenKind::*;
 
         match self {
-            Ind | Elim | Def | Fn | Forall => Style::Keyword,
+            Ind | Elim | Def | Fn | Forall | SelfType => Style::Keyword,
             Prop | Sort => Style::Builtin,
             Ident => Style::Identifier,
             Assign | Arrow | FatArrow => Style::Operator,
@@ -86,13 +87,14 @@ impl TokenKind {
         use TokenKind::*;
         &[
             Ind, Elim, Def, Prop, Sort, Assign, OpenParen, CloseParen, OpenBrace, CloseBrace,
-            Colon, Pipe, Arrow, FatArrow, Fn, Forall, Comma, Ident, Dot,
+            Colon, Pipe, Arrow, FatArrow, Fn, Forall, Comma, SelfType, Dot, Ident,
         ]
     }
 
     pub fn literal(&self) -> Option<&'static str> {
         use TokenKind::*;
         Some(match self {
+            SelfType => "Self",
             Ind => "ind",
             Elim => "elim",
             Def => "def",

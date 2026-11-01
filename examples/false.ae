@@ -1,0 +1,2 @@
+ind False : Prop :=
+elim rec

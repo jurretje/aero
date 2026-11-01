@@ -106,6 +106,7 @@ pub fn build_grammar() -> Grammar {
                 kind: Rk::Seq(vec![
                     Rk::Token(TokenKind::Pipe),
                     Rk::Token(TokenKind::Ident),
+                    Rk::Ref(RuleName::Params),
                     Rk::Ref(RuleName::TypeSpec),
                 ]),
             },
@@ -175,6 +176,7 @@ pub fn build_grammar() -> Grammar {
                     Rk::Ref(RuleName::Forall),
                     Rk::Token(TokenKind::Prop),
                     Rk::Token(TokenKind::Sort),
+                    Rk::Token(TokenKind::SelfType),
                 ]),
             },
             Rule {

@@ -6,6 +6,7 @@ pub type Expr = Spanned<ExprKind>;
 pub enum ExprKind {
     Identifier(Ident),
     Sort(Sort),
+    SelfType,
     Application {
         function: Box<Expr>,
         argument: Box<Expr>,

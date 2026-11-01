@@ -1,9 +1,14 @@
 use syntax::node::Node;
 
-pub struct Diagnostic {}
+#[derive(Debug)]
+pub struct Diagnostic {
+    unexpected_node: Node,
+}
 
 impl Diagnostic {
-    pub fn unexpected_node(_node: &Node) -> Self {
-        Self {}
+    pub fn unexpected_node(node: &Node) -> Self {
+        Self {
+            unexpected_node: node.clone()
+        }
     }
 }

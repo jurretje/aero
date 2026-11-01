@@ -56,6 +56,7 @@ fn lower_expression(node: &Node, source: &str) -> Result<surface::Expr, Diagnost
         NodeKind::Token(TokenKind::Sort) => {
             spanned(surface::ExprKind::Sort(surface::Sort::Sort(0)), node)
         } // TODO
+        NodeKind::Token(TokenKind::SelfType) => spanned(surface::ExprKind::SelfType, node),
         NodeKind::Token(TokenKind::Ident) => spanned(
             surface::ExprKind::Identifier(lower_ident(node, source)?),
             node,
@@ -363,6 +364,10 @@ fn lower_constructor(
         matches!(kind, NodeKind::Token(TokenKind::Ident))
     })?;
 
+    let params = find_child(node, |kind| {
+        matches!(kind, NodeKind::Rule(RuleName::Params))
+    })?;
+
     let type_spec = find_child(node, |kind| {
         matches!(kind, NodeKind::Rule(RuleName::TypeSpec))
     })?;
@@ -370,7 +375,7 @@ fn lower_constructor(
     Ok(spanned(
         surface::Constructor {
             name: lower_ident(name, source)?,
-            parameters: vec![], // TODO
+            parameters: lower_parameters(params, source)?,
             ty: lower_type_spec(type_spec, source)?,
         },
         node,
