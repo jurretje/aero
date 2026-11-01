@@ -11,10 +11,6 @@ pub fn run_cli() -> Result<(), Box<dyn std::error::Error>> {
         let pretty_printed_node = node.highlighted(&input, &compiler.options.theme.build());
         println!("{}", pretty_printed_node);
     }
-
-    if let Some(m) = output.surface {
-        dbg!(m);
-    }
-
+    
     Ok(())
 }

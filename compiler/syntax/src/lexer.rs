@@ -3,6 +3,12 @@ use crate::{
     token::{Token, TokenKind},
 };
 
+#[derive(Debug, Clone)]
+pub struct LexError {
+    pub span: Span,
+    pub character: char,
+}
+
 pub struct Lexer<'i> {
     input: &'i str,
     cursor: Location,
@@ -12,22 +18,23 @@ impl<'i> Lexer<'i> {
     pub fn new(input: &'i str) -> Self {
         Self {
             input,
-            cursor: Location {
-                pos: 0,
-                line: 0,
-                column: 0,
-            },
+            cursor: Location::default(),
         }
     }
 
-    pub fn tokens(&mut self) -> Vec<Token> {
+    pub fn tokens(&mut self) -> (Vec<Token>, Vec<LexError>) {
         let mut tokens = Vec::new();
+        let mut errors = Vec::new();
 
-        while let Some(token) = self.next() {
-            tokens.push(token);
+        loop {
+            match self.next() {
+                Ok(Some(token)) => tokens.push(token),
+                Ok(None) => break,
+                Err(error) => errors.push(error),
+            }
         }
 
-        tokens
+        (tokens, errors)
     }
 
     fn skip_whitespace(&mut self) {
@@ -92,13 +99,30 @@ impl<'i> Lexer<'i> {
         end
     }
 
-    pub fn next(&mut self) -> Option<Token> {
+    pub fn next(&mut self) -> Result<Option<Token>, LexError> {
         self.skip_whitespace();
 
-        let (tok, end) = self.lex_token(self.cursor)?;
+        if self.cursor.pos >= self.input.len() {
+            return Ok(None);
+        }
 
-        self.cursor = end;
+        let start = self.cursor;
 
-        Some(tok)
+        match self.lex_token(start) {
+            Some((token, end)) => {
+                self.cursor = end;
+                Ok(Some(token))
+            }
+            None => {
+                let character = self.input[start.pos..].chars().next().unwrap();
+                let end = self.advance_location(start, character.len_utf8());
+
+                self.cursor = end;
+                Err(LexError {
+                    span: Span { start, end },
+                    character,
+                })
+            }
+        }
     }
 }

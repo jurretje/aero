@@ -19,6 +19,10 @@ function is_selected(start: number, end: number, selections: Selection[]): boole
     return selections.some(selection => selection.start <= start && end <= selection.end);
 }
 
+function selection_crosses_newline(line_end: number, selections: Selection[]): boolean {
+    return selections.some(selection => selection.start < line_end && selection.end > line_end);
+}
+
 export function render(viewport: HTMLElement) {
     viewport.innerHTML = "";
 
@@ -39,8 +43,8 @@ function render_line(text: string, line_number: number) {
     const line_end = line_start + text.length;
 
     const tokens = (analysis_result?.tokens ?? []).filter(token =>
-        token.span.start.pos < line_end &&
-        token.span.end.pos > line_start
+        token.span.end.pos > line_start &&
+        token.span.start.pos < line_end
     );
 
     const selections = get_selections();
@@ -66,6 +70,8 @@ function render_line(text: string, line_number: number) {
         .filter(pos => pos >= line_start && pos <= line_end)
         .sort((a, b) => a - b);
 
+    let selection_wrapper: HTMLSpanElement | null = null;
+
     const append = (
         start: number,
         end: number,
@@ -73,26 +79,22 @@ function render_line(text: string, line_number: number) {
     ) => {
         if (end <= start) return;
 
+        const selected = SETTINGS.selection_mode !== "token" && is_selected(start, end, selections);
+
+        const target = get_parent(selected);
+
         if (!token) {
             const span = document.createElement("span");
             span.textContent = editor.text.slice(start, end);
-
-            if (
-                SETTINGS.selection_mode !== "token" &&
-                is_selected(start, end, selections)
-            ) {
-                span.classList.add("selected");
-            }
-
-            line.appendChild(span);
+            target.appendChild(span);
             return;
         }
 
-        const token_start = token.span.start.pos;
-        const token_end = token.span.end.pos;
-
         const parent = document.createElement("span");
         parent.classList.add(`${token.style.toLowerCase()}-token`);
+
+        const token_start = token.span.start.pos;
+        const token_end = token.span.end.pos;
 
         const cursor_on_token = editor.cursors.some(cursor =>
             cursor.position >= token_start &&
@@ -110,40 +112,9 @@ function render_line(text: string, line_number: number) {
             parent.classList.add("selected-token");
         }
 
-        const boundaries = new Set<number>([start, end]);
+        parent.textContent = editor.text.slice(start, end);
 
-        if (SETTINGS.selection_mode !== "token") {
-            for (const selection of selections) {
-                if (selection.start > start && selection.start < end) {
-                    boundaries.add(selection.start);
-                }
-
-                if (selection.end > start && selection.end < end) {
-                    boundaries.add(selection.end);
-                }
-            }
-        }
-
-        const sorted = [...boundaries].sort((a, b) => a - b);
-
-        for (let i = 0; i < sorted.length - 1; i++) {
-            const segment_start = sorted[i]!;
-            const segment_end = sorted[i + 1]!;
-
-            const child = document.createElement("span");
-            child.textContent = editor.text.slice(segment_start, segment_end);
-
-            if (
-                SETTINGS.selection_mode !== "token" &&
-                is_selected(segment_start, segment_end, selections)
-            ) {
-                child.classList.add("selected");
-            }
-
-            parent.appendChild(child);
-        }
-
-        line.appendChild(parent);
+        target.appendChild(parent);
     };
 
     for (let i = 0; i < sorted.length - 1; i++) {
@@ -158,8 +129,29 @@ function render_line(text: string, line_number: number) {
         append(start, end, token);
     }
 
+    if (SETTINGS.selection_mode !== "token" && selection_crosses_newline(line_end, selections)) {
+        const space = document.createElement("span");
+        space.textContent = " ";
+        get_parent(true).appendChild(space);
+    }
+
     append_cursors();
     return line;
+
+    function get_parent(selected: boolean): HTMLElement {
+        if (SETTINGS.selection_mode === "token" || !selected) {
+            selection_wrapper = null;
+            return line;
+        }
+
+        if (!selection_wrapper) {
+            selection_wrapper = document.createElement("span");
+            selection_wrapper.className = "selected";
+            line.appendChild(selection_wrapper);
+        }
+
+        return selection_wrapper;
+    }
 
     function append_cursors() {
         for (const cursor of editor.cursors) {

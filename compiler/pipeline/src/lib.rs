@@ -70,7 +70,7 @@ impl Compiler {
 
     pub fn analyze(&self, source: &str) -> Analysis {
         let mut lexer = Lexer::new(source);
-        let tokens = lexer.tokens();
+        let (tokens, _) = lexer.tokens();
 
         let parser_output = parse(&self.grammar_graph, &tokens, self.options.parse_costs);
 
@@ -96,8 +96,9 @@ impl Compiler {
 
     pub fn compile(&self, source: &str) -> CompileOutput {
         let mut lexer = Lexer::new(source);
-        let tokens = lexer.tokens();
+        let (tokens, lex_errors) = lexer.tokens();
 
+        dbg!(lex_errors);
         dbg!(&tokens);
 
         let parser_output = parse(&self.grammar_graph, &tokens, self.options.parse_costs);
@@ -129,6 +130,8 @@ impl Compiler {
                 None
             }
         };
+
+        // dbg!(&surface);
 
         CompileOutput {
             parsed: Some(syntax),

@@ -1,41 +1,41 @@
 import { editor } from "../editor/state.js";
 
 export function get_location_from_mouse(event: MouseEvent, viewport: HTMLElement) {
-    const rect = viewport.getBoundingClientRect();
+    const lines = [...viewport.children] as HTMLElement[];
 
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+    if (lines.length === 0) {
+        return { line: 0, column: 0 };
+    }
 
-    const lines = editor.text.split("\n");
+    const y = event.clientY;
 
-    const lineHeight =
-        parseFloat(getComputedStyle(viewport).lineHeight);
+    let line = 0;
+    let min_distance = Infinity;
 
-    let line = Math.floor(y / lineHeight);
+    for (let i = 0; i < lines.length; i++) {
+        const rect = lines[i]!.getBoundingClientRect();
+        const center = rect.top + rect.height / 2;
+        const distance = Math.abs(y - center);
+        if (distance < min_distance) {
+            min_distance = distance;
+            line = i;
+        }
+    }
 
-    line = Math.max(
-        0,
-        Math.min(line, lines.length - 1)
-    );
+    const text = editor.text.split("\n")[line] ?? "";
+    const line_element = lines[line]!;
 
-    const text = lines[line] ?? "";
-
-    const style = getComputedStyle(viewport);
-
+    const style = getComputedStyle(line_element);
+    
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("2d")!;
 
     context.font = `${style.fontSize} ${style.fontFamily}`;
 
-    const charWidth =
-        context.measureText("M").width;
-
-    let column = Math.round(x / charWidth);
-
-    column = Math.max(
-        0,
-        Math.min(column, text.length)
-    );
+    const char_width = context.measureText("M").width;
+    let x = event.clientX - viewport.getBoundingClientRect().left;
+    let column = Math.round(x / char_width);
+    column = Math.max(0, Math.min(column, text.length));
 
     return {
         line,

@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use serde::Serialize;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Hash, Default)]
 pub struct Location {
     pub pos: usize,
     pub line: usize,
