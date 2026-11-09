@@ -96,6 +96,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "core"
+version = "0.1.0"
+
+[[package]]
 name = "elaborator"
 version = "0.1.0"
 

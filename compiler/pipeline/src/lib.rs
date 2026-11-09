@@ -131,7 +131,7 @@ impl Compiler {
             }
         };
 
-        // dbg!(&surface);
+        dbg!(&surface);
         // dbg!(&diagnostics);
 
         CompileOutput {
