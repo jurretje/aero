@@ -1,14 +1,14 @@
+use elaborator::ElabError;
 use syntax::node::Node;
 
 #[derive(Debug)]
-pub struct Diagnostic {
-    unexpected_node: Node,
+pub enum Diagnostic {
+    UnexpectedNode(Node),
+    ElabError(ElabError)
 }
 
 impl Diagnostic {
     pub fn unexpected_node(node: &Node) -> Self {
-        Self {
-            unexpected_node: node.clone()
-        }
+        Self::UnexpectedNode(node.clone())
     }
 }

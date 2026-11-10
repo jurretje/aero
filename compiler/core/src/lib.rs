@@ -1,31 +1,10 @@
-pub enum Expr {
-    BoundVar(usize),
-    Sort(Level),
-    App {
-        function: Box<Expr>,
-        argument: Box<Expr>,
-    },
-    Lam {
-        info: BinderInfo,
-        domain: Box<Expr>,
-        body: Box<Expr>
-    },
-    Pi {
-        info: BinderInfo,
-        domain: Box<Expr>,
-        body: Box<Expr>
-    }
-}
+mod decl;
+mod expr;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BinderInfo {
-    Explicit,
-    Implicit
-}
+pub use decl::{Constructor, Declaration, Definition, Inductive, Recursor};
+pub use expr::{BinderInfo, CoreExpr, Level, Name};
 
-pub enum Level {
-    Zero,
-    Succ(Box<Level>),
-    Max(Box<Level>, Box<Level>),
-    Param,
+#[derive(Debug, Clone)]
+pub struct Module {
+    pub decls: Vec<Declaration>,
 }

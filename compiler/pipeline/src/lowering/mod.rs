@@ -1,7 +1,8 @@
-use surface::{BinderGroup, Spanned};
+use surface::{BinderGroup, SurfaceExpr};
 use syntax::{
     grammar::RuleName,
     node::{Node, NodeKind},
+    source::Spanned,
     token::TokenKind,
 };
 
@@ -14,8 +15,8 @@ fn find_child(node: &Node, predicate: impl Fn(&NodeKind) -> bool) -> Result<&Nod
         .ok_or_else(|| Diagnostic::unexpected_node(node))
 }
 
-fn spanned<T>(construct: T, node: &Node) -> surface::Spanned<T> {
-    surface::Spanned::new(construct, node.span.clone())
+fn spanned<T>(construct: T, node: &Node) -> Spanned<T> {
+    Spanned::new(construct, node.span.clone())
 }
 
 pub fn lower(root: &Node, source: &str) -> Result<surface::Module, Vec<Diagnostic>> {
@@ -40,22 +41,22 @@ pub fn lower(root: &Node, source: &str) -> Result<surface::Module, Vec<Diagnosti
 
 fn lower_ident(node: &Node, source: &str) -> Result<surface::Ident, Diagnostic> {
     match node.kind {
-        NodeKind::Token(TokenKind::Ident) => Ok(surface::Ident {
-            name: node.span.text(source).to_owned(),
-            span: node.span.clone(),
-        }),
+        NodeKind::Token(TokenKind::Ident) => Ok(surface::Ident::new(
+            node.span.text(source).to_owned(),
+            node.span.clone(),
+        )),
         _ => Err(Diagnostic::unexpected_node(node)),
     }
 }
 
-fn lower_expression(node: &Node, source: &str) -> Result<surface::Expr, Diagnostic> {
+fn lower_expression(node: &Node, source: &str) -> Result<surface::SurfaceExpr, Diagnostic> {
     Ok(match &node.kind {
         NodeKind::Token(TokenKind::Prop) => {
             spanned(surface::ExprKind::Sort(surface::Sort::Prop), node)
         }
         NodeKind::Token(TokenKind::Sort) => {
-            spanned(surface::ExprKind::Sort(surface::Sort::Sort(0)), node)
-        } // TODO
+            spanned(surface::ExprKind::Sort(surface::Sort::Sort), node)
+        }
         NodeKind::Token(TokenKind::SelfType) => spanned(surface::ExprKind::SelfType, node),
         NodeKind::Token(TokenKind::Ident) => spanned(
             surface::ExprKind::Identifier(lower_ident(node, source)?),
@@ -71,12 +72,12 @@ fn lower_expression(node: &Node, source: &str) -> Result<surface::Expr, Diagnost
     })
 }
 
-fn lower_parenthesized(node: &Node, source: &str) -> Result<surface::Expr, Diagnostic> {
+fn lower_parenthesized(node: &Node, source: &str) -> Result<surface::SurfaceExpr, Diagnostic> {
     let expression = find_child(node, |kind| matches!(kind, NodeKind::Rule(RuleName::Expr)))?;
     lower_expression(expression, source)
 }
 
-fn lower_application(node: &Node, source: &str) -> Result<surface::Expr, Diagnostic> {
+fn lower_application(node: &Node, source: &str) -> Result<surface::SurfaceExpr, Diagnostic> {
     let mut expressions = node
         .children
         .iter()
@@ -100,7 +101,7 @@ fn lower_application(node: &Node, source: &str) -> Result<surface::Expr, Diagnos
     Ok(result)
 }
 
-fn lower_atomic_expression(node: &Node, source: &str) -> Result<surface::Expr, Diagnostic> {
+fn lower_atomic_expression(node: &Node, source: &str) -> Result<surface::SurfaceExpr, Diagnostic> {
     let child = node
         .children
         .first()
@@ -109,7 +110,7 @@ fn lower_atomic_expression(node: &Node, source: &str) -> Result<surface::Expr, D
     lower_expression(child, source)
 }
 
-fn lower_arrow_expression(node: &Node, source: &str) -> Result<surface::Expr, Diagnostic> {
+fn lower_arrow_expression(node: &Node, source: &str) -> Result<surface::SurfaceExpr, Diagnostic> {
     let app = find_child(node, |kind| {
         matches!(kind, NodeKind::Rule(RuleName::AppExpr))
     })?;
@@ -149,10 +150,10 @@ fn lower_binder_group(node: &Node, source: &str) -> Result<Spanned<BinderGroup>,
 
     for child in &node.children {
         if matches!(&child.kind, NodeKind::Token(TokenKind::Ident)) {
-            names.push(surface::Ident {
-                name: child.span.text(source).to_owned(),
-                span: child.span.clone(),
-            });
+            names.push(surface::Ident::new(
+                child.span.text(source).to_owned(),
+                child.span.clone(),
+            ));
         }
     }
 
@@ -177,10 +178,7 @@ fn lower_binder_group(node: &Node, source: &str) -> Result<Spanned<BinderGroup>,
     ))
 }
 
-fn lower_parameters(
-    node: &Node,
-    source: &str,
-) -> Result<Vec<Spanned<surface::BinderGroup>>, Diagnostic> {
+fn lower_parameters(node: &Node, source: &str) -> Result<Vec<Spanned<BinderGroup>>, Diagnostic> {
     node.children
         .iter()
         .filter(|child| {
@@ -193,7 +191,7 @@ fn lower_parameters(
         .collect()
 }
 
-fn lower_lambda(node: &Node, source: &str) -> Result<surface::Expr, Diagnostic> {
+fn lower_lambda(node: &Node, source: &str) -> Result<surface::SurfaceExpr, Diagnostic> {
     let ident = find_child(node, |kind| {
         matches!(kind, NodeKind::Token(TokenKind::Ident))
     })?;
@@ -229,16 +227,16 @@ fn lower_binder_group_from_parts(
         .ok_or_else(|| Diagnostic::unexpected_node(type_spec))?;
 
     Ok(BinderGroup {
-        names: vec![surface::Ident {
-            name: ident.span.text(source).to_owned(),
-            span: ident.span.clone(),
-        }],
+        names: vec![surface::Ident::new(
+            ident.span.text(source).to_owned(),
+            ident.span.clone(),
+        )],
         ty: Some(lower_expression(expression, source)?),
         plicity,
     })
 }
 
-fn lower_forall(node: &Node, source: &str) -> Result<surface::Expr, Diagnostic> {
+fn lower_forall(node: &Node, source: &str) -> Result<surface::SurfaceExpr, Diagnostic> {
     let ident = find_child(node, |kind| {
         matches!(kind, NodeKind::Token(TokenKind::Ident))
     })?;
@@ -261,7 +259,7 @@ fn lower_forall(node: &Node, source: &str) -> Result<surface::Expr, Diagnostic> 
     ))
 }
 
-fn lower_type_spec(node: &Node, source: &str) -> Result<surface::Expr, Diagnostic> {
+fn lower_type_spec(node: &Node, source: &str) -> Result<surface::SurfaceExpr, Diagnostic> {
     lower_expression(
         find_child(node, |child| {
             matches!(child, NodeKind::Rule(RuleName::Expr))
@@ -270,7 +268,7 @@ fn lower_type_spec(node: &Node, source: &str) -> Result<surface::Expr, Diagnosti
     )
 }
 
-fn lower_qualified_ident(node: &Node, source: &str) -> Result<surface::Expr, Diagnostic> {
+fn lower_qualified_ident(node: &Node, source: &str) -> Result<surface::SurfaceExpr, Diagnostic> {
     let name = node.span.text(source).to_owned();
 
     Ok(spanned(
@@ -351,7 +349,7 @@ fn lower_inductive(node: &Node, source: &str) -> Result<surface::Inductive, Diag
         name: lower_ident(name, source)?,
         parameters: lower_parameters(params, source)?,
         ty: Some(lower_type_spec(type_spec, source)?),
-        constructors,
+        cons: constructors,
         recursor_name: Some(lower_ident(recursor_name, source)?),
     })
 }

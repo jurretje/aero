@@ -12,7 +12,7 @@ elim rec
 ind False : Prop :=
 elim rec
 
-ind Nat : Sort u :=
+ind Nat : Sort :=
 | zero : Self
 | succ : Self -> Self
 elim rec

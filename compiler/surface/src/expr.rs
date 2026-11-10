@@ -1,6 +1,6 @@
 use crate::{Spanned, binder::BinderGroup, ident::Ident};
 
-pub type Expr = Spanned<ExprKind>;
+pub type SurfaceExpr = Spanned<ExprKind>;
 
 #[derive(Debug, Clone)]
 pub enum ExprKind {
@@ -8,21 +8,21 @@ pub enum ExprKind {
     Sort(Sort),
     SelfType,
     Application {
-        function: Box<Expr>,
-        argument: Box<Expr>,
+        function: Box<SurfaceExpr>,
+        argument: Box<SurfaceExpr>,
     },
     Lambda {
         binders: Vec<BinderGroup>,
-        body: Box<Expr>,
+        body: Box<SurfaceExpr>,
     },
     Pi {
         binders: Vec<BinderGroup>,
-        body: Box<Expr>,
+        body: Box<SurfaceExpr>,
     },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Sort {
     Prop,
-    Sort(u32),
+    Sort,
 }

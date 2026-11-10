@@ -30,3 +30,32 @@ impl Debug for Span {
         )
     }
 }
+
+#[derive(Clone)]
+pub struct Spanned<T> {
+    pub node: T,
+    pub span: Span,
+}
+
+impl<T> Spanned<T> {
+    pub fn new(node: T, span: Span) -> Self {
+        Self { node, span }
+    }
+
+    pub fn map<U>(self, f: impl FnOnce(T) -> U) -> Spanned<U> {
+        Spanned {
+            node: f(self.node),
+            span: self.span,
+        }
+    }
+}
+
+impl<T: Debug> Debug for Spanned<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if f.alternate() {
+            write!(f, "{:#?}", self.node)
+        } else {
+            write!(f, "{:?}", self.node)
+        }
+    }
+}

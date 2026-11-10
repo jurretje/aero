@@ -1,4 +1,6 @@
+use elaborator::Elaborator;
 use serde::{Deserialize, Serialize};
+use surface::{Module, SurfaceExpr};
 use syntax::{
     grammar::build_grammar,
     graph::{GrammarGraph, GrammarGraphBuilder},
@@ -54,7 +56,7 @@ pub struct Analysis {
 
 pub struct CompileOutput {
     pub parsed: Option<Node>,
-    pub surface: Option<surface::Module>,
+    pub surface: Option<Module>,
     pub diagnostics: Vec<Diagnostic>,
 }
 
@@ -96,10 +98,7 @@ impl Compiler {
 
     pub fn compile(&self, source: &str) -> CompileOutput {
         let mut lexer = Lexer::new(source);
-        let (tokens, lex_errors) = lexer.tokens();
-
-        dbg!(lex_errors);
-        dbg!(&tokens);
+        let (tokens, _) = lexer.tokens();
 
         let parser_output = parse(&self.grammar_graph, &tokens, self.options.parse_costs);
 
@@ -124,19 +123,37 @@ impl Compiler {
         let mut diagnostics = Vec::new();
 
         let surface = match lowering::lower(&syntax, source) {
-            Ok(module) => Some(module),
+            Ok(module) => module,
             Err(errors) => {
                 diagnostics.extend(errors);
-                None
+                return CompileOutput {
+                    parsed: Some(syntax),
+                    surface: None,
+                    diagnostics,
+                };
             }
         };
 
-        dbg!(&surface);
-        // dbg!(&diagnostics);
+        let mut elaborator = Elaborator::new();
+
+        let core = match elaborator.elaborate_module(&surface) {
+            Ok(module) => Some(module),
+            Err(errors) => {
+                diagnostics.extend(errors.into_iter().map(|e| Diagnostic::ElabError(e)));
+
+                return CompileOutput {
+                    parsed: Some(syntax),
+                    surface: Some(surface),
+                    diagnostics,
+                };
+            }
+        };
+
+        dbg!(&core);
 
         CompileOutput {
             parsed: Some(syntax),
-            surface,
+            surface: Some(surface),
             diagnostics,
         }
     }

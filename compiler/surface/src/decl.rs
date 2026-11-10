@@ -1,4 +1,4 @@
-use crate::{Expr, Spanned, binder::BinderGroup, ident::Ident};
+use crate::{Spanned, SurfaceExpr, binder::BinderGroup, ident::Ident};
 
 #[derive(Debug, Clone)]
 pub enum Declaration {
@@ -10,16 +10,16 @@ pub enum Declaration {
 pub struct Definition {
     pub name: Ident,
     pub parameters: Vec<Spanned<BinderGroup>>,
-    pub ty: Option<Expr>,
-    pub value: Expr,
+    pub ty: Option<SurfaceExpr>,
+    pub value: SurfaceExpr,
 }
 
 #[derive(Debug, Clone)]
 pub struct Inductive {
     pub name: Ident,
     pub parameters: Vec<Spanned<BinderGroup>>,
-    pub ty: Option<Expr>,
-    pub constructors: Vec<Spanned<Constructor>>,
+    pub ty: Option<SurfaceExpr>,
+    pub cons: Vec<Spanned<Constructor>>,
     pub recursor_name: Option<Ident>,
 }
 
@@ -27,5 +27,5 @@ pub struct Inductive {
 pub struct Constructor {
     pub name: Ident,
     pub parameters: Vec<Spanned<BinderGroup>>,
-    pub ty: Expr,
+    pub ty: SurfaceExpr,
 }
