@@ -204,13 +204,6 @@ impl Elaborator {
 
         let domain = self.elaborate_expr(ty)?;
 
-        // TODO
-        if binder.names.len() != 1 {
-            return Err(ElabError::TooManyBinders);
-        }
-
-        let name = binder.names[0].clone();
-
         let bi = match binder.plicity {
             surface::Plicity::Explicit => core::BinderInfo::Explicit,
             surface::Plicity::Implicit => core::BinderInfo::Implicit,
@@ -218,29 +211,35 @@ impl Elaborator {
 
         let checkpoint = self.ctx.checkpoint();
 
-        self.ctx.push(LocalDecl {
-            name,
-            ty: domain.clone(),
-            bi,
-        });
+        for name in &binder.names {
+            self.ctx.push(LocalDecl {
+                name: name.clone(),
+                ty: domain.clone(),
+                bi,
+            });
+        }
 
         let result = self.elaborate_binders(remaining, body, is_lambda);
-
         self.ctx.truncate(checkpoint);
 
-        let body = result?;
-        if is_lambda {
-            Ok(CoreExpr::Lam {
-                info: bi,
-                domain: Box::new(domain),
-                body: Box::new(body),
-            })
-        } else {
-            Ok(CoreExpr::Pi {
-                info: bi,
-                domain: Box::new(domain),
-                body: Box::new(body),
-            })
+        let mut body = result?;
+
+        for _ in binder.names.iter().rev() {
+            body = if is_lambda {
+                CoreExpr::Lam {
+                    info: bi,
+                    domain: Box::new(domain.clone()),
+                    body: Box::new(body),
+                }
+            } else {
+                CoreExpr::Pi {
+                    info: bi,
+                    domain: Box::new(domain.clone()),
+                    body: Box::new(body),
+                }
+            }
         }
+
+        Ok(body)
     }
 }
