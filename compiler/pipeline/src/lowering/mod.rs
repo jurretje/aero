@@ -1,4 +1,4 @@
-use surface::{BinderGroup, SurfaceExpr};
+use surface::BinderGroup;
 use syntax::{
     grammar::RuleName,
     node::{Node, NodeKind},
@@ -49,19 +49,91 @@ fn lower_ident(node: &Node, source: &str) -> Result<surface::Ident, Diagnostic> 
     }
 }
 
+fn lower_universe_expr(node: &Node, source: &str) -> Result<surface::Level, Diagnostic> {
+    match &node.kind {
+        NodeKind::Rule(RuleName::UniverseLevel) => {
+            let first = node
+                .children
+                .first()
+                .ok_or_else(|| Diagnostic::unexpected_node(node))?;
+
+            match &first.kind {
+                NodeKind::Token(TokenKind::Ident) => {
+                    Ok(surface::Level::Ident(lower_ident(first, source)?))
+                }
+                NodeKind::Token(TokenKind::Zero) => Ok(surface::Level::Zero),
+                NodeKind::Token(TokenKind::Succ) => {
+                    let inner = find_child(node, |kind| {
+                        matches!(kind, NodeKind::Rule(RuleName::UniverseLevel))
+                    })?;
+
+                    Ok(surface::Level::Succ(Box::new(lower_universe_expr(
+                        inner, source,
+                    )?)))
+                }
+                NodeKind::Token(TokenKind::Max) => {
+                    let levels = node
+                        .children
+                        .iter()
+                        .filter(|child| {
+                            matches!(&child.kind, NodeKind::Rule(RuleName::UniverseLevel))
+                        })
+                        .collect::<Vec<_>>();
+
+                    if levels.len() != 2 {
+                        return Err(Diagnostic::unexpected_node(node));
+                    }
+
+                    Ok(surface::Level::Max(
+                        Box::new(lower_universe_expr(levels[0], source)?),
+                        Box::new(lower_universe_expr(levels[1], source)?),
+                    ))
+                }
+                NodeKind::Rule(RuleName::ParenLevel) => lower_universe_expr(first, source),
+                _ => Err(Diagnostic::unexpected_node(node)),
+            }
+        }
+
+        NodeKind::Rule(RuleName::ParenLevel) => {
+            let inner = find_child(node, |kind| {
+                matches!(kind, NodeKind::Rule(RuleName::UniverseLevel))
+            })?;
+
+            lower_universe_expr(inner, source)
+        }
+
+        _ => Err(Diagnostic::unexpected_node(node)),
+    }
+}
+
+fn lower_sort_expr(node: &Node, source: &str) -> Result<surface::SurfaceExpr, Diagnostic> {
+    let level = node
+        .children
+        .iter()
+        .find(|child| matches!(&child.kind, NodeKind::Rule(RuleName::UniverseLevel)))
+        .map(|level| lower_universe_expr(level, source))
+        .transpose()?;
+
+    Ok(spanned(
+        surface::ExprKind::Sort(match level {
+            Some(level) => surface::Sort::Sort(level),
+            None => todo!(), // INFER SORT LEVEL
+        }),
+        node,
+    ))
+}
+
 fn lower_expression(node: &Node, source: &str) -> Result<surface::SurfaceExpr, Diagnostic> {
     Ok(match &node.kind {
         NodeKind::Token(TokenKind::Prop) => {
             spanned(surface::ExprKind::Sort(surface::Sort::Prop), node)
-        }
-        NodeKind::Token(TokenKind::Sort) => {
-            spanned(surface::ExprKind::Sort(surface::Sort::Sort), node)
         }
         NodeKind::Token(TokenKind::SelfType) => spanned(surface::ExprKind::SelfType, node),
         NodeKind::Token(TokenKind::Ident) => spanned(
             surface::ExprKind::Identifier(lower_ident(node, source)?),
             node,
         ),
+        NodeKind::Rule(RuleName::SortExpr) => lower_sort_expr(node, source)?,
         NodeKind::Rule(RuleName::Expr) => lower_arrow_expression(node, source)?,
         NodeKind::Rule(RuleName::AppExpr) => lower_application(node, source)?,
         NodeKind::Rule(RuleName::QualifiedIdent) => lower_qualified_ident(node, source)?,

@@ -24,5 +24,13 @@ pub enum ExprKind {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Sort {
     Prop,
-    Sort,
+    Sort(Level),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Level {
+    Ident(Ident),
+    Zero,
+    Succ(Box<Level>),
+    Max(Box<Level>, Box<Level>),
 }

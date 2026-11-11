@@ -8,7 +8,7 @@ use context::LocalContext;
 use environment::Environment;
 use surface::SurfaceExpr;
 
-use core::{CoreExpr, Level, Name};
+use core::{CoreExpr, Name};
 
 use crate::context::LocalDecl;
 
@@ -153,6 +153,20 @@ impl Elaborator {
         todo!()
     }
 
+    fn elaborate_level(&self, level: &surface::Level) -> Result<core::Level, ElabError> {
+        Ok(match level {
+            surface::Level::Ident(ident) => core::Level::Param(Name::from(ident)),
+            surface::Level::Zero => core::Level::Zero,
+            surface::Level::Succ(level) => {
+                core::Level::Succ(Box::new(self.elaborate_level(level)?))
+            }
+            surface::Level::Max(lhs, rhs) => core::Level::Max(
+                Box::new(self.elaborate_level(lhs)?),
+                Box::new(self.elaborate_level(rhs)?),
+            ),
+        })
+    }
+
     pub fn elaborate_expr(&mut self, expr: &SurfaceExpr) -> Result<CoreExpr, ElabError> {
         match &expr.node {
             surface::ExprKind::Identifier(ident) => {
@@ -168,9 +182,10 @@ impl Elaborator {
             }
             surface::ExprKind::Sort(sort) => {
                 let level = match sort {
-                    surface::Sort::Prop => Level::Zero,
-                    surface::Sort::Sort => Level::Zero,
+                    surface::Sort::Prop => core::Level::Zero,
+                    surface::Sort::Sort(level) => self.elaborate_level(level)?,
                 };
+
                 Ok(CoreExpr::Sort(level))
             }
             surface::ExprKind::SelfType => self
@@ -181,6 +196,7 @@ impl Elaborator {
             surface::ExprKind::Application { function, argument } => {
                 let function = Box::new(self.elaborate_expr(function)?);
                 let argument = Box::new(self.elaborate_expr(argument)?);
+                
                 Ok(CoreExpr::App { function, argument })
             }
             surface::ExprKind::Lambda { binders, body } => {

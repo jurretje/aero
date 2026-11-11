@@ -1,0 +1,3 @@
+ind Exists {a : Sort u} {P : a -> Prop} : Prop :=
+| intro (w : a) (h : P w) : Self P
+elim rec

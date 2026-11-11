@@ -1,6 +1,6 @@
 use elaborator::Elaborator;
 use serde::{Deserialize, Serialize};
-use surface::{Module, SurfaceExpr};
+use surface::Module;
 use syntax::{
     grammar::build_grammar,
     graph::{GrammarGraph, GrammarGraphBuilder},
@@ -70,35 +70,11 @@ impl Compiler {
         }
     }
 
-    pub fn analyze(&self, source: &str) -> Analysis {
-        let mut lexer = Lexer::new(source);
-        let (tokens, _) = lexer.tokens();
-
-        let parser_output = parse(&self.grammar_graph, &tokens, self.options.parse_costs);
-
-        let ast = parser_output
-            .actions
-            .and_then(|actions| build_ast(&actions, &tokens));
-
-        Analysis {
-            tokens: tokens
-                .iter()
-                .map(|tok| {
-                    let style = tok.kind.style();
-                    StylizedToken {
-                        kind: tok.kind,
-                        span: tok.span.clone(),
-                        style,
-                    }
-                })
-                .collect(),
-            parsed: ast,
-        }
-    }
-
     pub fn compile(&self, source: &str) -> CompileOutput {
         let mut lexer = Lexer::new(source);
         let (tokens, _) = lexer.tokens();
+
+        dbg!(&tokens);
 
         let parser_output = parse(&self.grammar_graph, &tokens, self.options.parse_costs);
 
@@ -119,6 +95,8 @@ impl Compiler {
                 diagnostics: vec![],
             };
         };
+
+        syntax.print_tree(source, &self.options.theme.build());
 
         let mut diagnostics = Vec::new();
 
@@ -155,6 +133,32 @@ impl Compiler {
             parsed: Some(syntax),
             surface: Some(surface),
             diagnostics,
+        }
+    }
+
+    pub fn analyze(&self, source: &str) -> Analysis {
+        let mut lexer = Lexer::new(source);
+        let (tokens, _) = lexer.tokens();
+
+        let parser_output = parse(&self.grammar_graph, &tokens, self.options.parse_costs);
+
+        let ast = parser_output
+            .actions
+            .and_then(|actions| build_ast(&actions, &tokens));
+
+        Analysis {
+            tokens: tokens
+                .iter()
+                .map(|tok| {
+                    let style = tok.kind.style();
+                    StylizedToken {
+                        kind: tok.kind,
+                        span: tok.span.clone(),
+                        style,
+                    }
+                })
+                .collect(),
+            parsed: ast,
         }
     }
 }

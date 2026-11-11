@@ -6,8 +6,8 @@ mod expr;
 mod ident;
 
 pub use binder::{BinderGroup, Plicity};
-pub use decl::{Constructor, Declaration, Inductive, Definition};
-pub use expr::{ExprKind, Sort, SurfaceExpr};
+pub use decl::{Constructor, Declaration, Definition, Inductive};
+pub use expr::{ExprKind, Level, Sort, SurfaceExpr};
 pub use ident::Ident;
 
 #[derive(Debug, Clone)]

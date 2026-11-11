@@ -47,16 +47,19 @@ pub enum RuleName {
     ImplicitSection,
     TypeSpec,
     Expr,
+    ParenExpr,
     AppExpr,
     AtomicExpr,
-    ParenExpr,
+    SortExpr,
+    UniverseLevel,
+    ParenLevel,
     Lambda,
     Forall,
     QualifiedIdent,
 }
 
 impl RuleName {
-    pub const ALL: [Self; 15] = [
+    pub const ALL: [Self; 18] = [
         Self::Env,
         Self::Ind,
         Self::Constructor,
@@ -66,9 +69,12 @@ impl RuleName {
         Self::ImplicitSection,
         Self::TypeSpec,
         Self::Expr,
+        Self::ParenExpr,
         Self::AppExpr,
         Self::AtomicExpr,
-        Self::ParenExpr,
+        Self::SortExpr,
+        Self::UniverseLevel,
+        Self::ParenLevel,
         Self::Lambda,
         Self::Forall,
         Self::QualifiedIdent,
@@ -161,6 +167,14 @@ pub fn build_grammar() -> Grammar {
                 ]),
             },
             Rule {
+                name: RuleName::ParenExpr,
+                kind: Rk::Seq(vec![
+                    Rk::Token(TokenKind::OpenParen),
+                    Rk::Ref(RuleName::Expr),
+                    Rk::Token(TokenKind::CloseParen),
+                ]),
+            },
+            Rule {
                 name: RuleName::AppExpr,
                 kind: Rk::Seq(vec![
                     Rk::Ref(RuleName::AtomicExpr),
@@ -175,15 +189,41 @@ pub fn build_grammar() -> Grammar {
                     Rk::Ref(RuleName::Lambda),
                     Rk::Ref(RuleName::Forall),
                     Rk::Token(TokenKind::Prop),
-                    Rk::Token(TokenKind::Sort),
+                    Rk::Ref(RuleName::SortExpr),
                     Rk::Token(TokenKind::SelfType),
                 ]),
             },
             Rule {
-                name: RuleName::ParenExpr,
+                name: RuleName::SortExpr,
+                kind: Rk::Seq(vec![
+                    Rk::Token(TokenKind::Sort),
+                    Rk::Question(Box::new(Rk::Ref(RuleName::UniverseLevel))),
+                ]),
+            },
+            Rule {
+                name: RuleName::UniverseLevel,
+                kind: Rk::Alt(vec![
+                    Rk::Token(TokenKind::Ident),
+                    Rk::Token(TokenKind::Zero),
+                    Rk::Ref(RuleName::ParenLevel),
+                    Rk::Seq(vec![
+                        Rk::Token(TokenKind::Succ),
+                        Rk::Token(TokenKind::OpenParen),
+                        Rk::Ref(RuleName::UniverseLevel),
+                        Rk::Token(TokenKind::CloseParen),
+                    ]),
+                    Rk::Seq(vec![
+                        Rk::Token(TokenKind::Max),
+                        Rk::Ref(RuleName::UniverseLevel),
+                        Rk::Ref(RuleName::UniverseLevel),
+                    ]),
+                ]),
+            },
+            Rule {
+                name: RuleName::ParenLevel,
                 kind: Rk::Seq(vec![
                     Rk::Token(TokenKind::OpenParen),
-                    Rk::Ref(RuleName::Expr),
+                    Rk::Ref(RuleName::UniverseLevel),
                     Rk::Token(TokenKind::CloseParen),
                 ]),
             },

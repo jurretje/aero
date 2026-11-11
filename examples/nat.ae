@@ -1,4 +1,4 @@
 ind Nat : Sort u :=
-| zero : Self
-| succ : Self -> Self
+| z : Self
+| s : Self -> Self
 elim rec

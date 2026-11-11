@@ -1,6 +1,11 @@
 use serde::Serialize;
 
-use crate::{grammar::RuleName, source::Span, theme::Theme, token::TokenKind};
+use crate::{
+    grammar::RuleName,
+    source::Span,
+    theme::{Style, Theme},
+    token::TokenKind,
+};
 
 #[derive(Debug, Serialize, PartialEq, Eq, Clone)]
 pub enum NodeKind {
@@ -47,6 +52,43 @@ impl Node {
                     out.push_str(&input[cursor..self.span.end.pos]);
                 }
             }
+        }
+    }
+
+    pub fn print_tree(&self, input: &str, theme: &Theme) {
+        println!("{:?}", self.kind);
+        self.write_tree(input, "", theme);
+    }
+
+    fn label(&self, input: &str) -> String {
+        match self.kind {
+            NodeKind::Token(kind) => kind.literal().unwrap_or(self.span.text(input)).to_string(),
+            NodeKind::Rule(name) => {
+                format!("{:?}", name)
+            }
+        }
+    }
+
+    fn colored_label(&self, input: &str, theme: &Theme) -> String {
+        let (label, style) = match self.kind {
+            NodeKind::Token(kind) => (self.label(input), kind.style()),
+            NodeKind::Rule(_) => (self.label(input), Style::Punctuation),
+        };
+
+        format!("{}{}{}", theme.color(style).ansi(), label, "\x1b[0m")
+    }
+
+    fn write_tree(&self, input: &str, prefix: &str, theme: &Theme) {
+        for (i, child) in self.children.iter().enumerate() {
+            let is_last = i == self.children.len() - 1;
+
+            let branch = if is_last { "└── " } else { "├── " };
+
+            println!("{}{}{}", prefix, branch, child.colored_label(input, theme));
+
+            let child_prefix = format!("{}{}", prefix, if is_last { "    " } else { "│   " });
+
+            child.write_tree(input, &child_prefix, theme);
         }
     }
 }
