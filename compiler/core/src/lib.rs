@@ -2,7 +2,7 @@ mod decl;
 mod expr;
 
 pub use decl::{Constructor, Declaration, Definition, Inductive, Recursor};
-pub use expr::{BinderInfo, CoreExpr, Level, Name};
+pub use expr::{BinderInfo, CoreExpr, Level, NameId};
 
 #[derive(Debug, Clone)]
 pub struct Module {

@@ -8,7 +8,7 @@ mod ident;
 pub use binder::{BinderGroup, Plicity};
 pub use decl::{Constructor, Declaration, Definition, Inductive};
 pub use expr::{ExprKind, Level, Sort, SurfaceExpr};
-pub use ident::Ident;
+pub use ident::{IdentId, QualifiedIdent};
 
 #[derive(Debug, Clone)]
 pub struct Module {

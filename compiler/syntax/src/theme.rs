@@ -32,7 +32,7 @@ pub enum ThemeName {
     Feather,
     Monokai,
     TokyoNight,
-}
+}   
 
 impl ThemeName {
     pub fn build(self) -> Theme {

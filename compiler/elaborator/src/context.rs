@@ -1,10 +1,10 @@
-use core::{BinderInfo, CoreExpr, Name};
+use core::{BinderInfo, CoreExpr, NameId};
 
-use surface::Ident;
+use surface::{IdentId, QualifiedIdent};
 
 #[derive(Debug, Clone)]
 pub struct LocalDecl {
-    pub name: Ident,
+    pub ident: IdentId,
     pub ty: CoreExpr,
     pub bi: BinderInfo,
 }
@@ -20,7 +20,7 @@ impl LocalContext {
         &self.current_inductive
     }
 
-    pub fn set_self(&mut self, name: Name) {
+    pub fn set_self(&mut self, name: NameId) {
         self.current_inductive = Some(CoreExpr::Const(name))
     }
 
@@ -40,22 +40,12 @@ impl LocalContext {
         self.decls.truncate(checkpoint);
     }
 
-    pub fn pop(&mut self, name: &str) -> Option<(usize, &LocalDecl)> {
-        self.decls
-            .iter()
-            .enumerate()
-            .rev()
-            .find(|(_, decl)| decl.name.literal() == name)
-            .map(|(position, decl)| {
-                let index = self.decls.len() - 1 - position;
-                (index, decl)
-            })
-    }
-    pub fn lookup_name(&self, name: &str) -> Option<(usize, &LocalDecl)> {
-        self.decls
-            .iter()
-            .enumerate()
-            .rev()
-            .find(|(_, decl)| decl.name.literal() == name)
+    pub fn lookup_name(&self, id: &QualifiedIdent) -> Option<(usize, &LocalDecl)> {
+        todo!()
+        // self.decls
+        //     .iter()
+        //     .enumerate()
+        //     .rev()
+        //     .find(|(_, decl)| decl.name.literal() == name)
     }
 }

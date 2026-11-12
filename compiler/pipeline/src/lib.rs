@@ -12,15 +12,10 @@ use syntax::{
     token::TokenKind,
 };
 
-use crate::diagnostics::Diagnostic;
+use crate::{diagnostics::Diagnostic, lowering::Lowerer};
 
 pub mod diagnostics;
 pub mod lowering;
-
-pub struct Compiler {
-    pub options: CompilerOptions,
-    pub grammar_graph: GrammarGraph,
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CompilerOptions {
@@ -60,6 +55,11 @@ pub struct CompileOutput {
     pub diagnostics: Vec<Diagnostic>,
 }
 
+pub struct Compiler {
+    pub options: CompilerOptions,
+    pub grammar_graph: GrammarGraph,
+}
+
 impl Compiler {
     pub fn new() -> Self {
         let grammar_graph = GrammarGraphBuilder::new(&build_grammar()).build();
@@ -74,17 +74,16 @@ impl Compiler {
         let mut lexer = Lexer::new(source);
         let (tokens, _) = lexer.tokens();
 
-        dbg!(&tokens);
+        // dbg!(&tokens);
 
         let parser_output = parse(&self.grammar_graph, &tokens, self.options.parse_costs);
+        let actions = parser_output.actions;
 
-        let Some(actions) = parser_output.actions else {
-            return CompileOutput {
-                parsed: None,
-                surface: None,
-                diagnostics: vec![],
-            };
-        };
+        let edits = actions.iter().filter(|a| a.is_edit()).collect::<Vec<_>>();
+
+        if !edits.is_empty() {
+            dbg!(edits);
+        }
 
         let syntax = build_ast(&actions, &tokens);
 
@@ -100,7 +99,9 @@ impl Compiler {
 
         let mut diagnostics = Vec::new();
 
-        let surface = match lowering::lower(&syntax, source) {
+        let mut lowerer = Lowerer::default();
+
+        let surface = match lowerer.lower(syntax.clone()) {
             Ok(module) => module,
             Err(errors) => {
                 diagnostics.extend(errors);
@@ -111,6 +112,8 @@ impl Compiler {
                 };
             }
         };
+
+        dbg!(&surface);
 
         let mut elaborator = Elaborator::new();
 
@@ -127,7 +130,7 @@ impl Compiler {
             }
         };
 
-        dbg!(&core);
+        // dbg!(&core);
 
         CompileOutput {
             parsed: Some(syntax),
@@ -142,9 +145,7 @@ impl Compiler {
 
         let parser_output = parse(&self.grammar_graph, &tokens, self.options.parse_costs);
 
-        let ast = parser_output
-            .actions
-            .and_then(|actions| build_ast(&actions, &tokens));
+        let ast = build_ast(&parser_output.actions, &tokens);
 
         Analysis {
             tokens: tokens

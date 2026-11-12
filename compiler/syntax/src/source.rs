@@ -2,14 +2,21 @@ use std::fmt::Debug;
 
 use serde::Serialize;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SourceEdit {
+    Insert { at: Location, text: String },
+    Delete { span: Span },
+    Replace { span: Span, text: String },
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Hash, Default)]
 pub struct Location {
-    pub pos: usize,
+    pub position: usize,
     pub line: usize,
     pub column: usize,
 }
 
-#[derive(Clone, PartialEq, Eq, Serialize, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Serialize, Hash)]
 pub struct Span {
     pub start: Location,
     pub end: Location,
@@ -17,7 +24,7 @@ pub struct Span {
 
 impl Span {
     pub fn text<'a>(&self, input: &'a str) -> &'a str {
-        &input[self.start.pos..self.end.pos]
+        &input[self.start.position..self.end.position]
     }
 }
 

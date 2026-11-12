@@ -1,10 +1,12 @@
-use crate::{Spanned, binder::BinderGroup, ident::Ident};
+use std::fmt::Debug;
+
+use crate::{IdentId, QualifiedIdent, Spanned, binder::BinderGroup};
 
 pub type SurfaceExpr = Spanned<ExprKind>;
 
 #[derive(Debug, Clone)]
 pub enum ExprKind {
-    Identifier(Ident),
+    Identifier(QualifiedIdent),
     Sort(Sort),
     SelfType,
     Application {
@@ -12,11 +14,11 @@ pub enum ExprKind {
         argument: Box<SurfaceExpr>,
     },
     Lambda {
-        binders: Vec<BinderGroup>,
+        binders: Vec<Spanned<BinderGroup>>,
         body: Box<SurfaceExpr>,
     },
     Pi {
-        binders: Vec<BinderGroup>,
+        binders: Vec<Spanned<BinderGroup>>,
         body: Box<SurfaceExpr>,
     },
 }
@@ -24,12 +26,12 @@ pub enum ExprKind {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Sort {
     Prop,
-    Sort(Level),
+    Sort(Option<Level>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Level {
-    Ident(Ident),
+    Ident(IdentId),
     Zero,
     Succ(Box<Level>),
     Max(Box<Level>, Box<Level>),

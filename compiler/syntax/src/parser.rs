@@ -86,12 +86,12 @@ impl StackArena {
 #[derive(Clone, Debug)]
 pub enum Action {
     Match(TokenKind, Span),
-    Insert(TokenKind, usize),
-    Delete(usize),
-    Replace(TokenKind, Token),
     EnterRule(RuleName),
     ExitRule(RuleName),
     Epsilon,
+    Insert(TokenKind, usize),
+    Delete(usize),
+    Replace(TokenKind, Token),
 }
 
 impl Action {
@@ -250,7 +250,7 @@ pub struct ReturnFrame {
 
 #[derive(Debug)]
 pub struct ParserOutput {
-    pub actions: Option<Vec<Action>>,
+    pub actions: Vec<Action>,
     pub cost: Option<usize>,
     pub stats: ParseStats,
 }
@@ -304,7 +304,7 @@ pub fn parse(graph: &GrammarGraph, tokens: &[Token], costs: ParseCosts) -> Parse
             stats.visited_configurations = best.len();
             stats.search_nodes = nodes.len();
             return ParserOutput {
-                actions: Some(reconstruct(&nodes, node_id)),
+                actions: reconstruct(&nodes, node_id),
                 cost: Some(cost),
                 stats,
             };
@@ -355,7 +355,7 @@ pub fn parse(graph: &GrammarGraph, tokens: &[Token], costs: ParseCosts) -> Parse
     }
 
     ParserOutput {
-        actions: None,
+        actions: vec![],
         cost: None,
         stats,
     }

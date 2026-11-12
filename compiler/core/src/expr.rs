@@ -1,10 +1,8 @@
-use surface::Ident;
-
 #[derive(Debug, Clone)]
 pub enum CoreExpr {
     BoundVar(usize),
     Sort(Level),
-    Const(Name),
+    Const(NameId),
     App {
         function: Box<CoreExpr>,
         argument: Box<CoreExpr>,
@@ -32,24 +30,8 @@ pub enum Level {
     Zero,
     Succ(Box<Level>),
     Max(Box<Level>, Box<Level>),
-    Param(Name),
+    Param(NameId),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Name(String);
-
-impl Name {
-    pub fn new(name: String) -> Self {
-        Self(name)
-    }
-
-    pub fn literal(&self) -> &str {
-        &self.0
-    }
-}
-
-impl From<&Ident> for Name {
-    fn from(value: &Ident) -> Self {
-        Self(value.literal().to_owned())
-    }
-}
+pub struct NameId(pub usize);

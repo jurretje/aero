@@ -16,8 +16,8 @@ pub enum NodeKind {
 #[derive(Debug, Serialize, Clone)]
 pub struct Node {
     pub kind: NodeKind,
-    pub span: Span,
     pub children: Vec<Node>,
+    pub span: Span,
 }
 
 impl Node {
@@ -36,20 +36,20 @@ impl Node {
             }
 
             NodeKind::Rule(_) => {
-                let mut cursor = self.span.start.pos;
+                let mut cursor = self.span.start.position;
 
                 for child in &self.children {
-                    if cursor < child.span.start.pos {
-                        out.push_str(&input[cursor..child.span.start.pos]);
+                    if cursor < child.span.start.position {
+                        out.push_str(&input[cursor..child.span.start.position]);
                     }
 
                     child.write_highlighted(input, out, theme);
 
-                    cursor = child.span.end.pos;
+                    cursor = child.span.end.position;
                 }
 
-                if cursor < self.span.end.pos {
-                    out.push_str(&input[cursor..self.span.end.pos]);
+                if cursor < self.span.end.position {
+                    out.push_str(&input[cursor..self.span.end.position]);
                 }
             }
         }

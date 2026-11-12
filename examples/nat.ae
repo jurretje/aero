@@ -2,3 +2,10 @@ ind Nat : Sort u :=
 | z : Self
 | s : Self -> Self
 elim rec
+
+def add (a b : Nat) : Nat :=
+    Nat.rec 
+        b
+        (fn (n ih : Nat) => Nat.s ih)
+        a
+        

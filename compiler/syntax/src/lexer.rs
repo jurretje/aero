@@ -40,14 +40,14 @@ impl<'i> Lexer<'i> {
     fn skip_whitespace(&mut self) {
         let bytes = self.input.as_bytes();
 
-        while let Some(&b) = bytes.get(self.cursor.pos) {
+        while let Some(&b) = bytes.get(self.cursor.position) {
             match b {
                 b' ' | b'\t' | b'\r' => {
-                    self.cursor.pos += 1;
+                    self.cursor.position += 1;
                     self.cursor.column += 1;
                 }
                 b'\n' => {
-                    self.cursor.pos += 1;
+                    self.cursor.position += 1;
                     self.cursor.line += 1;
                     self.cursor.column = 0;
                 }
@@ -59,7 +59,7 @@ impl<'i> Lexer<'i> {
     fn lex_token(&self, start: Location) -> Option<(Token, Location)> {
         let mut best = None;
 
-        let slice = &self.input[start.pos..];
+        let slice = &self.input[start.position..];
         for kind in TokenKind::all() {
             if let Some((k, len)) = kind.matches(slice) {
                 match best {
@@ -85,7 +85,7 @@ impl<'i> Lexer<'i> {
 
     fn advance_location(&self, start: Location, len: usize) -> Location {
         let mut end = start;
-        let bytes = &self.input.as_bytes()[start.pos..start.pos + len];
+        let bytes = &self.input.as_bytes()[start.position..start.position + len];
         for &b in bytes {
             if b == b'\n' {
                 end.line += 1;
@@ -93,7 +93,7 @@ impl<'i> Lexer<'i> {
             } else {
                 end.column += 1;
             }
-            end.pos += 1;
+            end.position += 1;
         }
 
         end
@@ -102,7 +102,7 @@ impl<'i> Lexer<'i> {
     pub fn next(&mut self) -> Result<Option<Token>, LexError> {
         self.skip_whitespace();
 
-        if self.cursor.pos >= self.input.len() {
+        if self.cursor.position >= self.input.len() {
             return Ok(None);
         }
 
@@ -114,7 +114,7 @@ impl<'i> Lexer<'i> {
                 Ok(Some(token))
             }
             None => {
-                let character = self.input[start.pos..].chars().next().unwrap();
+                let character = self.input[start.position..].chars().next().unwrap();
                 let end = self.advance_location(start, character.len_utf8());
 
                 self.cursor = end;

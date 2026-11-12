@@ -1,4 +1,7 @@
-use surface::BinderGroup;
+use surface::{
+    BinderGroup, Constructor, Declaration, Definition, ExprKind, IdentId, Inductive, Level, Module,
+    Plicity, QualifiedIdent, Sort, SurfaceExpr,
+};
 use syntax::{
     grammar::RuleName,
     node::{Node, NodeKind},
@@ -6,448 +9,512 @@ use syntax::{
     token::TokenKind,
 };
 
-use crate::diagnostics::Diagnostic;
+use crate::{diagnostics::Diagnostic, lowering::interner::IdentInterner};
 
-fn find_child(node: &Node, predicate: impl Fn(&NodeKind) -> bool) -> Result<&Node, Diagnostic> {
-    node.children
-        .iter()
-        .find(|&child| predicate(&child.kind))
-        .ok_or_else(|| Diagnostic::unexpected_node(node))
-}
+mod interner;
 
-fn spanned<T>(construct: T, node: &Node) -> Spanned<T> {
-    Spanned::new(construct, node.span.clone())
-}
+fn partition_children(
+    children: Vec<Node>,
+    predicate: impl Fn(&NodeKind) -> bool,
+) -> (Vec<Node>, Vec<Node>) {
+    let mut matched = Vec::new();
+    let mut remaining = Vec::new();
 
-pub fn lower(root: &Node, source: &str) -> Result<surface::Module, Vec<Diagnostic>> {
-    use surface::Module;
-
-    let mut declarations = Vec::new();
-    let mut diagnostics = Vec::new();
-
-    for child in &root.children {
-        match lower_declaration(child, source) {
-            Ok(declaration) => declarations.push(declaration),
-            Err(error) => diagnostics.push(error),
+    for child in children {
+        if predicate(&child.kind) {
+            matched.push(child);
+        } else {
+            remaining.push(child);
         }
     }
 
-    if diagnostics.is_empty() {
-        Ok(Module { declarations })
-    } else {
-        Err(diagnostics)
-    }
+    (matched, remaining)
 }
 
-fn lower_ident(node: &Node, source: &str) -> Result<surface::Ident, Diagnostic> {
-    match node.kind {
-        NodeKind::Token(TokenKind::Ident) => Ok(surface::Ident::new(
-            node.span.text(source).to_owned(),
-            node.span.clone(),
-        )),
-        _ => Err(Diagnostic::unexpected_node(node)),
-    }
+fn take_one(
+    children: Vec<Node>,
+    predicate: impl Fn(&NodeKind) -> bool,
+) -> Result<Node, Diagnostic> {
+    let (matched, _) = partition_children(children, predicate);
+    matched.into_iter().next().ok_or_else(|| todo!())
 }
 
-fn lower_universe_expr(node: &Node, source: &str) -> Result<surface::Level, Diagnostic> {
-    match &node.kind {
-        NodeKind::Rule(RuleName::UniverseLevel) => {
-            let first = node
-                .children
-                .first()
-                .ok_or_else(|| Diagnostic::unexpected_node(node))?;
+#[derive(Default)]
+pub struct Lowerer {
+    interner: IdentInterner,
+}
 
-            match &first.kind {
-                NodeKind::Token(TokenKind::Ident) => {
-                    Ok(surface::Level::Ident(lower_ident(first, source)?))
-                }
-                NodeKind::Token(TokenKind::Zero) => Ok(surface::Level::Zero),
-                NodeKind::Token(TokenKind::Succ) => {
-                    let inner = find_child(node, |kind| {
-                        matches!(kind, NodeKind::Rule(RuleName::UniverseLevel))
-                    })?;
+impl Lowerer {
+    pub fn lower(&mut self, root: Node) -> Result<Module, Vec<Diagnostic>> {
+        let mut declarations = Vec::new();
+        let mut diagnostics = Vec::new();
 
-                    Ok(surface::Level::Succ(Box::new(lower_universe_expr(
-                        inner, source,
-                    )?)))
-                }
-                NodeKind::Token(TokenKind::Max) => {
-                    let levels = node
-                        .children
-                        .iter()
-                        .filter(|child| {
-                            matches!(&child.kind, NodeKind::Rule(RuleName::UniverseLevel))
-                        })
-                        .collect::<Vec<_>>();
+        for child in root.children {
+            match self.lower_declaration(child) {
+                Ok(declaration) => declarations.push(declaration),
+                Err(error) => diagnostics.push(error),
+            }
+        }
 
-                    if levels.len() != 2 {
-                        return Err(Diagnostic::unexpected_node(node));
+        if diagnostics.is_empty() {
+            Ok(Module { declarations })
+        } else {
+            Err(diagnostics)
+        }
+    }
+
+    pub fn lower_universe_expression(&mut self, node: Node) -> Result<Level, Diagnostic> {
+        let Node { kind, children, .. } = node;
+
+        match kind {
+            NodeKind::Rule(RuleName::UniverseLevel) => {
+                let mut children = children.into_iter();
+
+                let first = children.next().ok_or_else(|| todo!())?;
+
+                match &first.kind {
+                    NodeKind::Token(TokenKind::Ident) => Ok(Level::Ident(self.lower_ident(first)?)),
+                    NodeKind::Token(TokenKind::Zero) => Ok(Level::Zero),
+                    NodeKind::Token(TokenKind::Succ) => {
+                        let inner = take_one(children.collect(), |kind| {
+                            matches!(kind, NodeKind::Rule(RuleName::UniverseLevel))
+                        })?;
+
+                        Ok(Level::Succ(Box::new(
+                            self.lower_universe_expression(inner)?,
+                        )))
                     }
+                    NodeKind::Token(TokenKind::Max) => {
+                        let (levels, _) = partition_children(children.collect(), |kind| {
+                            matches!(kind, NodeKind::Rule(RuleName::UniverseLevel))
+                        });
 
-                    Ok(surface::Level::Max(
-                        Box::new(lower_universe_expr(levels[0], source)?),
-                        Box::new(lower_universe_expr(levels[1], source)?),
-                    ))
+                        if levels.len() != 2 {
+                            todo!();
+                        }
+
+                        let mut levels = levels.into_iter();
+
+                        let lhs = levels.next().ok_or_else(|| todo!())?;
+                        let rhs = levels.next().ok_or_else(|| todo!())?;
+
+                        Ok(Level::Max(
+                            Box::new(self.lower_universe_expression(lhs)?),
+                            Box::new(self.lower_universe_expression(rhs)?),
+                        ))
+                    }
+                    NodeKind::Rule(RuleName::ParenLevel) => self.lower_universe_expression(first),
+                    _ => todo!(),
                 }
-                NodeKind::Rule(RuleName::ParenLevel) => lower_universe_expr(first, source),
-                _ => Err(Diagnostic::unexpected_node(node)),
             }
-        }
 
-        NodeKind::Rule(RuleName::ParenLevel) => {
-            let inner = find_child(node, |kind| {
-                matches!(kind, NodeKind::Rule(RuleName::UniverseLevel))
-            })?;
+            NodeKind::Rule(RuleName::ParenLevel) => {
+                let inner = take_one(children, |kind| {
+                    matches!(kind, NodeKind::Rule(RuleName::UniverseLevel))
+                })?;
 
-            lower_universe_expr(inner, source)
-        }
+                self.lower_universe_expression(inner)
+            }
 
-        _ => Err(Diagnostic::unexpected_node(node)),
-    }
-}
-
-fn lower_sort_expr(node: &Node, source: &str) -> Result<surface::SurfaceExpr, Diagnostic> {
-    let level = node
-        .children
-        .iter()
-        .find(|child| matches!(&child.kind, NodeKind::Rule(RuleName::UniverseLevel)))
-        .map(|level| lower_universe_expr(level, source))
-        .transpose()?;
-
-    Ok(spanned(
-        surface::ExprKind::Sort(match level {
-            Some(level) => surface::Sort::Sort(level),
-            None => todo!(), // INFER SORT LEVEL
-        }),
-        node,
-    ))
-}
-
-fn lower_expression(node: &Node, source: &str) -> Result<surface::SurfaceExpr, Diagnostic> {
-    Ok(match &node.kind {
-        NodeKind::Token(TokenKind::Prop) => {
-            spanned(surface::ExprKind::Sort(surface::Sort::Prop), node)
-        }
-        NodeKind::Token(TokenKind::SelfType) => spanned(surface::ExprKind::SelfType, node),
-        NodeKind::Token(TokenKind::Ident) => spanned(
-            surface::ExprKind::Identifier(lower_ident(node, source)?),
-            node,
-        ),
-        NodeKind::Rule(RuleName::SortExpr) => lower_sort_expr(node, source)?,
-        NodeKind::Rule(RuleName::Expr) => lower_arrow_expression(node, source)?,
-        NodeKind::Rule(RuleName::AppExpr) => lower_application(node, source)?,
-        NodeKind::Rule(RuleName::QualifiedIdent) => lower_qualified_ident(node, source)?,
-        NodeKind::Rule(RuleName::ParenExpr) => lower_parenthesized(node, source)?,
-        NodeKind::Rule(RuleName::Lambda) => lower_lambda(node, source)?,
-        NodeKind::Rule(RuleName::Forall) => lower_forall(node, source)?,
-        _ => return Err(Diagnostic::unexpected_node(node)),
-    })
-}
-
-fn lower_parenthesized(node: &Node, source: &str) -> Result<surface::SurfaceExpr, Diagnostic> {
-    let expression = find_child(node, |kind| matches!(kind, NodeKind::Rule(RuleName::Expr)))?;
-    lower_expression(expression, source)
-}
-
-fn lower_application(node: &Node, source: &str) -> Result<surface::SurfaceExpr, Diagnostic> {
-    let mut expressions = node
-        .children
-        .iter()
-        .filter(|child| matches!(&child.kind, NodeKind::Rule(RuleName::AtomicExpr)))
-        .map(|child| lower_atomic_expression(child, source));
-
-    let mut result = expressions
-        .next()
-        .ok_or_else(|| Diagnostic::unexpected_node(node))??;
-
-    for expression in expressions {
-        result = spanned(
-            surface::ExprKind::Application {
-                function: Box::new(result),
-                argument: Box::new(expression?),
-            },
-            node,
-        );
-    }
-
-    Ok(result)
-}
-
-fn lower_atomic_expression(node: &Node, source: &str) -> Result<surface::SurfaceExpr, Diagnostic> {
-    let child = node
-        .children
-        .first()
-        .ok_or_else(|| Diagnostic::unexpected_node(node))?;
-
-    lower_expression(child, source)
-}
-
-fn lower_arrow_expression(node: &Node, source: &str) -> Result<surface::SurfaceExpr, Diagnostic> {
-    let app = find_child(node, |kind| {
-        matches!(kind, NodeKind::Rule(RuleName::AppExpr))
-    })?;
-
-    let left = lower_expression(app, source)?;
-
-    let Some(right) = node.children.iter().find(|child| {
-        matches!(&child.kind, NodeKind::Rule(RuleName::Expr))
-            && child.span.start.pos > app.span.start.pos
-    }) else {
-        return Ok(left);
-    };
-
-    let right = lower_expression(right, source)?;
-
-    Ok(spanned(
-        surface::ExprKind::Pi {
-            binders: vec![BinderGroup {
-                names: vec![],
-                ty: Some(left),
-                plicity: surface::Plicity::Explicit,
-            }],
-            body: Box::new(right),
-        },
-        node,
-    ))
-}
-
-fn lower_binder_group(node: &Node, source: &str) -> Result<Spanned<BinderGroup>, Diagnostic> {
-    let plicity = match &node.kind {
-        NodeKind::Rule(RuleName::ExplicitSection) => surface::Plicity::Explicit,
-        NodeKind::Rule(RuleName::ImplicitSection) => surface::Plicity::Implicit,
-        _ => return Err(Diagnostic::unexpected_node(node)),
-    };
-
-    let mut names = Vec::new();
-
-    for child in &node.children {
-        if matches!(&child.kind, NodeKind::Token(TokenKind::Ident)) {
-            names.push(surface::Ident::new(
-                child.span.text(source).to_owned(),
-                child.span.clone(),
-            ));
+            _ => todo!(),
         }
     }
 
-    let type_node = find_child(node, |kind| {
-        matches!(kind, NodeKind::Rule(RuleName::TypeSpec))
-    })?;
-    let expression_node = find_child(type_node, |kind| {
-        matches!(kind, NodeKind::Rule(RuleName::Expr))
-    })?;
+    fn lower_sort_expression(&mut self, node: Node) -> Result<SurfaceExpr, Diagnostic> {
+        let level = node
+            .children
+            .into_iter()
+            .find(|child| matches!(&child.kind, NodeKind::Rule(RuleName::UniverseLevel)))
+            .map(|level| self.lower_universe_expression(level))
+            .transpose()?;
 
-    if names.is_empty() {
-        return Err(Diagnostic::unexpected_node(node));
+        Ok(Spanned::new(ExprKind::Sort(Sort::Sort(level)), node.span))
     }
 
-    Ok(spanned(
-        surface::BinderGroup {
-            names,
-            ty: Some(lower_expression(expression_node, source)?),
-            plicity,
-        },
-        node,
-    ))
-}
-
-fn lower_parameters(node: &Node, source: &str) -> Result<Vec<Spanned<BinderGroup>>, Diagnostic> {
-    node.children
-        .iter()
-        .filter(|child| {
-            matches!(
-                &child.kind,
-                NodeKind::Rule(RuleName::ExplicitSection | RuleName::ImplicitSection)
-            )
-        })
-        .map(|child| lower_binder_group(child, source))
-        .collect()
-}
-
-fn lower_lambda(node: &Node, source: &str) -> Result<surface::SurfaceExpr, Diagnostic> {
-    let ident = find_child(node, |kind| {
-        matches!(kind, NodeKind::Token(TokenKind::Ident))
-    })?;
-
-    let type_spec = find_child(node, |kind| {
-        matches!(kind, NodeKind::Rule(RuleName::TypeSpec))
-    })?;
-
-    let body = find_child(node, |kind| matches!(kind, NodeKind::Rule(RuleName::Expr)))?;
-
-    let binder =
-        lower_binder_group_from_parts(ident, type_spec, surface::Plicity::Explicit, source)?;
-
-    Ok(spanned(
-        surface::ExprKind::Lambda {
-            binders: vec![binder],
-            body: Box::new(lower_expression(body, source)?),
-        },
-        node,
-    ))
-}
-
-fn lower_binder_group_from_parts(
-    ident: &Node,
-    type_spec: &Node,
-    plicity: surface::Plicity,
-    source: &str,
-) -> Result<BinderGroup, Diagnostic> {
-    let expression = type_spec
-        .children
-        .iter()
-        .find(|child| matches!(&child.kind, NodeKind::Rule(RuleName::Expr)))
-        .ok_or_else(|| Diagnostic::unexpected_node(type_spec))?;
-
-    Ok(BinderGroup {
-        names: vec![surface::Ident::new(
-            ident.span.text(source).to_owned(),
-            ident.span.clone(),
-        )],
-        ty: Some(lower_expression(expression, source)?),
-        plicity,
-    })
-}
-
-fn lower_forall(node: &Node, source: &str) -> Result<surface::SurfaceExpr, Diagnostic> {
-    let ident = find_child(node, |kind| {
-        matches!(kind, NodeKind::Token(TokenKind::Ident))
-    })?;
-
-    let type_spec = find_child(node, |kind| {
-        matches!(kind, NodeKind::Rule(RuleName::TypeSpec))
-    })?;
-
-    let body = find_child(node, |kind| matches!(kind, NodeKind::Rule(RuleName::Expr)))?;
-
-    let binder =
-        lower_binder_group_from_parts(ident, type_spec, surface::Plicity::Explicit, source)?;
-
-    Ok(spanned(
-        surface::ExprKind::Pi {
-            binders: vec![binder],
-            body: Box::new(lower_expression(body, source)?),
-        },
-        node,
-    ))
-}
-
-fn lower_type_spec(node: &Node, source: &str) -> Result<surface::SurfaceExpr, Diagnostic> {
-    lower_expression(
-        find_child(node, |child| {
-            matches!(child, NodeKind::Rule(RuleName::Expr))
-        })?,
-        source,
-    )
-}
-
-fn lower_qualified_ident(node: &Node, source: &str) -> Result<surface::SurfaceExpr, Diagnostic> {
-    let name = node.span.text(source).to_owned();
-
-    Ok(spanned(
-        surface::ExprKind::Identifier(surface::Ident::new(name, node.span.clone())),
-        node,
-    ))
-}
-
-fn lower_declaration(
-    node: &Node,
-    source: &str,
-) -> Result<Spanned<surface::Declaration>, Diagnostic> {
-    Ok(spanned(
+    fn lower_ident(&mut self, node: Node) -> Result<IdentId, Diagnostic> {
         match node.kind {
+            NodeKind::Token(TokenKind::Ident) => Ok(self.interner.intern(node.span)),
+            _ => todo!(),
+        }
+    }
+}
+
+impl Lowerer {
+    fn lower_expression(&mut self, node: Node) -> Result<SurfaceExpr, Diagnostic> {
+        let s = match node.kind {
+            NodeKind::Token(TokenKind::Prop) => Spanned::new(ExprKind::Sort(Sort::Prop), node.span),
+            NodeKind::Token(TokenKind::SelfType) => Spanned::new(ExprKind::SelfType, node.span),
+            NodeKind::Rule(RuleName::SortExpr) => self.lower_sort_expression(node)?,
+            NodeKind::Rule(RuleName::Expr) => self.lower_arrow_expression(node)?,
+            NodeKind::Rule(RuleName::AppExpr) => self.lower_application(node)?,
+            NodeKind::Rule(RuleName::QualifiedIdent) => self.lower_qualified_ident(node)?,
+            NodeKind::Rule(RuleName::ParenExpr) => self.lower_parenthesized(node)?,
+            NodeKind::Rule(RuleName::Lambda) => self.lower_lambda(node)?,
+            NodeKind::Rule(RuleName::Forall) => self.lower_forall(node)?,
+            _ => todo!(),
+        };
+        Ok(s)
+    }
+}
+
+impl Lowerer {
+    fn lower_parenthesized(&mut self, node: Node) -> Result<SurfaceExpr, Diagnostic> {
+        let Node { children, .. } = node;
+
+        let mut expression = None;
+
+        for child in children {
+            match child.kind {
+                NodeKind::Rule(RuleName::Expr) => expression = Some(child),
+                _ => {}
+            }
+        }
+
+        let expression = expression.ok_or_else(|| todo!())?;
+        self.lower_expression(expression)
+    }
+}
+
+impl Lowerer {
+    fn lower_application(&mut self, node: Node) -> Result<SurfaceExpr, Diagnostic> {
+        let mut expressions = node
+            .children
+            .into_iter()
+            .filter(|child| matches!(&child.kind, NodeKind::Rule(RuleName::AtomicExpr)))
+            .map(|child| self.lower_atomic_expression(child));
+
+        let mut result = expressions.next().ok_or_else(|| todo!())??;
+
+        for expression in expressions {
+            result = Spanned::new(
+                ExprKind::Application {
+                    function: Box::new(result),
+                    argument: Box::new(expression?),
+                },
+                node.span,
+            );
+        }
+
+        Ok(result)
+    }
+}
+
+impl Lowerer {
+    fn lower_atomic_expression(&mut self, node: Node) -> Result<SurfaceExpr, Diagnostic> {
+        let Node { children, .. } = node;
+
+        let mut expr = None;
+        for child in children {
+            expr = Some(child);
+            break;
+        }
+
+        let expr = expr.ok_or_else(|| todo!())?;
+
+        self.lower_expression(expr)
+    }
+}
+
+impl Lowerer {
+    fn lower_arrow_expression(&mut self, node: Node) -> Result<SurfaceExpr, Diagnostic> {
+        let mut operands = node
+            .children
+            .into_iter()
+            .filter(|child| matches!(&child.kind, NodeKind::Rule(RuleName::AppExpr)))
+            .map(|child| self.lower_expression(child))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let mut result = operands.pop().ok_or_else(|| todo!())?;
+
+        while let Some(left) = operands.pop() {
+            let binder = Spanned::new(
+                BinderGroup {
+                    names: vec![],
+                    ty: Some(left),
+                    plicity: Plicity::Explicit,
+                },
+                node.span,
+            );
+
+            result = Spanned::new(
+                ExprKind::Pi {
+                    binders: vec![binder],
+                    body: Box::new(result),
+                },
+                node.span,
+            );
+        }
+
+        Ok(result)
+    }
+}
+
+impl Lowerer {
+    fn lower_binder_group(&mut self, node: Node) -> Result<Spanned<BinderGroup>, Diagnostic> {
+        let Node {
+            kind,
+            children,
+            span,
+        } = node;
+
+        let plicity = match kind {
+            NodeKind::Rule(RuleName::ExplicitSection) => Plicity::Explicit,
+            NodeKind::Rule(RuleName::ImplicitSection) => Plicity::Implicit,
+            _ => todo!(),
+        };
+
+        let mut names = Vec::new();
+
+        let mut type_node = None;
+
+        for child in children {
+            match child.kind {
+                NodeKind::Token(TokenKind::Ident) => names.push(self.lower_ident(child)?),
+                NodeKind::Rule(RuleName::TypeSpec) => type_node = Some(child),
+                _ => {}
+            }
+        }
+
+        if names.is_empty() {
+            todo!()
+        }
+
+        let type_node = type_node.ok_or_else(|| todo!())?;
+
+        Ok(Spanned::new(
+            BinderGroup {
+                names,
+                ty: Some(self.lower_type_spec(type_node)?),
+                plicity,
+            },
+            span,
+        ))
+    }
+}
+
+impl Lowerer {
+    fn lower_parameters(&mut self, node: Node) -> Result<Vec<Spanned<BinderGroup>>, Diagnostic> {
+        node.children
+            .into_iter()
+            .filter(|child| {
+                matches!(
+                    &child.kind,
+                    NodeKind::Rule(RuleName::ExplicitSection | RuleName::ImplicitSection)
+                )
+            })
+            .map(|child| self.lower_binder_group(child))
+            .collect()
+    }
+}
+impl Lowerer {
+    fn lower_lambda(&mut self, node: Node) -> Result<SurfaceExpr, Diagnostic> {
+        let Node { children, span, .. } = node;
+
+        let mut params = None;
+        let mut body = None;
+
+        for child in children {
+            match child.kind {
+                NodeKind::Rule(RuleName::Params) => params = Some(child),
+                NodeKind::Rule(RuleName::Expr) => body = Some(child),
+                _ => {}
+            }
+        }
+
+        let params = params.ok_or_else(|| todo!())?;
+        let body = body.ok_or_else(|| todo!())?;
+
+        Ok(Spanned::new(
+            ExprKind::Lambda {
+                binders: self.lower_parameters(params)?,
+                body: Box::new(self.lower_expression(body)?),
+            },
+            span,
+        ))
+    }
+}
+
+impl Lowerer {
+    fn lower_forall(&mut self, node: Node) -> Result<SurfaceExpr, Diagnostic> {
+        let Node { children, span, .. } = node;
+
+        let mut params = None;
+        let mut body = None;
+
+        for child in children {
+            match child.kind {
+                NodeKind::Rule(RuleName::Params) => params = Some(child),
+                NodeKind::Rule(RuleName::Expr) => body = Some(child),
+                _ => {}
+            }
+        }
+
+        let params = params.ok_or_else(|| todo!())?;
+        let body = body.ok_or_else(|| todo!())?;
+
+        Ok(Spanned::new(
+            ExprKind::Pi {
+                binders: self.lower_parameters(params)?,
+                body: Box::new(self.lower_expression(body)?),
+            },
+            span,
+        ))
+    }
+
+    fn lower_type_spec(&mut self, node: Node) -> Result<SurfaceExpr, Diagnostic> {
+        let Node { children, .. } = node;
+
+        let mut expr = None;
+
+        for child in children {
+            match child.kind {
+                NodeKind::Rule(RuleName::Expr) => expr = Some(child),
+                _ => {}
+            }
+        }
+
+        let expr = expr.ok_or_else(|| todo!())?;
+
+        self.lower_expression(expr)
+    }
+}
+
+impl Lowerer {
+    fn lower_declaration(&mut self, node: Node) -> Result<Spanned<Declaration>, Diagnostic> {
+        let span = node.span;
+
+        let decl = match &node.kind {
             NodeKind::Rule(RuleName::Const) => {
-                surface::Declaration::Definition(lower_definition(node, source)?)
+                Declaration::Definition(self.lower_definition(node)?)
             }
-            NodeKind::Rule(RuleName::Ind) => {
-                surface::Declaration::Inductive(lower_inductive(node, source)?)
+            NodeKind::Rule(RuleName::Ind) => Declaration::Inductive(self.lower_inductive(node)?),
+            _ => todo!(),
+        };
+
+        Ok(Spanned::new(decl, span))
+    }
+}
+
+impl Lowerer {
+    fn lower_definition(&mut self, node: Node) -> Result<Definition, Diagnostic> {
+        let Node { children, .. } = node;
+
+        let mut name = None;
+        let mut params = None;
+        let mut type_spec = None;
+        let mut value = None;
+
+        for child in children {
+            match child.kind {
+                NodeKind::Token(TokenKind::Ident) => name = Some(child),
+                NodeKind::Rule(RuleName::Params) => params = Some(child),
+                NodeKind::Rule(RuleName::TypeSpec) => type_spec = Some(child),
+                NodeKind::Rule(RuleName::Expr) => value = Some(child),
+                _ => {}
             }
-            _ => return Err(Diagnostic::unexpected_node(node)),
-        },
-        node,
-    ))
+        }
+
+        let name = name.ok_or_else(|| todo!())?;
+        let params = params.ok_or_else(|| todo!())?;
+        let type_spec = type_spec.ok_or_else(|| todo!())?;
+        let value = value.ok_or_else(|| todo!())?;
+
+        Ok(Definition {
+            name: self.lower_ident(name)?,
+            parameters: self.lower_parameters(params)?,
+            ty: Some(self.lower_type_spec(type_spec)?),
+            value: self.lower_expression(value)?,
+        })
+    }
 }
 
-fn lower_definition(node: &Node, source: &str) -> Result<surface::Definition, Diagnostic> {
-    let name = find_child(node, |kind| {
-        matches!(kind, NodeKind::Token(TokenKind::Ident))
-    })?;
+impl Lowerer {
+    fn lower_inductive(&mut self, node: Node) -> Result<Inductive, Diagnostic> {
+        let Node { children, .. } = node;
 
-    let params = find_child(node, |kind| {
-        matches!(kind, NodeKind::Rule(RuleName::Params))
-    })?;
+        let mut name = None;
+        let mut params = None;
+        let mut type_spec = None;
+        let mut constructors = Vec::new();
+        let mut recursor_name = None;
 
-    let type_spec = find_child(node, |kind| {
-        matches!(kind, NodeKind::Rule(RuleName::TypeSpec))
-    })?;
+        for child in children {
+            match child.kind {
+                NodeKind::Token(TokenKind::Ident) if name.is_none() => name = Some(child),
+                NodeKind::Rule(RuleName::Params) => params = Some(child),
+                NodeKind::Rule(RuleName::TypeSpec) => type_spec = Some(child),
+                NodeKind::Rule(RuleName::Constructor) => {
+                    constructors.push(self.lower_constructor(child)?)
+                }
+                NodeKind::Token(TokenKind::Ident) => recursor_name = Some(child),
+                _ => {}
+            }
+        }
 
-    let value = find_child(node, |kind| matches!(kind, NodeKind::Rule(RuleName::Expr)))?;
+        let name = name.ok_or_else(|| todo!())?;
+        let params = params.ok_or_else(|| todo!())?;
+        let type_spec = type_spec.ok_or_else(|| todo!())?;
+        let recursor_name = recursor_name.ok_or_else(|| todo!())?;
 
-    Ok(surface::Definition {
-        name: lower_ident(name, source)?,
-        parameters: lower_parameters(params, source)?,
-        ty: Some(lower_type_spec(type_spec, source)?),
-        value: lower_expression(value, source)?,
-    })
+        Ok(Inductive {
+            name: self.lower_ident(name)?,
+            parameters: self.lower_parameters(params)?,
+            ty: Some(self.lower_type_spec(type_spec)?),
+            cons: constructors,
+            recursor_name: Some(self.lower_ident(recursor_name)?),
+        })
+    }
 }
 
-fn lower_inductive(node: &Node, source: &str) -> Result<surface::Inductive, Diagnostic> {
-    let name = find_child(node, |kind| {
-        matches!(kind, NodeKind::Token(TokenKind::Ident))
-    })?;
+impl Lowerer {
+    fn lower_constructor(&mut self, node: Node) -> Result<Spanned<Constructor>, Diagnostic> {
+        let Node { children, .. } = node;
 
-    let params = find_child(node, |kind| {
-        matches!(kind, NodeKind::Rule(RuleName::Params))
-    })?;
+        let mut name = None;
+        let mut params = None;
+        let mut type_spec = None;
 
-    let type_spec = find_child(node, |kind| {
-        matches!(kind, NodeKind::Rule(RuleName::TypeSpec))
-    })?;
+        for child in children {
+            match child.kind {
+                NodeKind::Token(TokenKind::Ident) => name = Some(child),
+                NodeKind::Rule(RuleName::Params) => params = Some(child),
+                NodeKind::Rule(RuleName::TypeSpec) => type_spec = Some(child),
+                _ => {}
+            }
+        }
 
-    let constructors = node
-        .children
-        .iter()
-        .filter(|child| matches!(&child.kind, NodeKind::Rule(RuleName::Constructor)))
-        .map(|child| lower_constructor(child, source))
-        .collect::<Result<_, _>>()?;
+        let name = name.ok_or_else(|| todo!())?;
+        let params = params.ok_or_else(|| todo!())?;
+        let type_spec = type_spec.ok_or_else(|| todo!())?;
 
-    let recursor_name = node
-        .children
-        .iter()
-        .rev()
-        .find(|&child| matches!(&child.kind, NodeKind::Token(TokenKind::Ident)))
-        .ok_or_else(|| Diagnostic::unexpected_node(node))?;
-
-    Ok(surface::Inductive {
-        name: lower_ident(name, source)?,
-        parameters: lower_parameters(params, source)?,
-        ty: Some(lower_type_spec(type_spec, source)?),
-        cons: constructors,
-        recursor_name: Some(lower_ident(recursor_name, source)?),
-    })
+        Ok(Spanned::new(
+            Constructor {
+                name: self.lower_ident(name)?,
+                parameters: self.lower_parameters(params)?,
+                ty: self.lower_type_spec(type_spec)?,
+            },
+            node.span,
+        ))
+    }
 }
 
-fn lower_constructor(
-    node: &Node,
-    source: &str,
-) -> Result<Spanned<surface::Constructor>, Diagnostic> {
-    let name = find_child(node, |kind| {
-        matches!(kind, NodeKind::Token(TokenKind::Ident))
-    })?;
+impl Lowerer {
+    fn lower_qualified_ident(&mut self, node: Node) -> Result<SurfaceExpr, Diagnostic> {
+        let Node { children, span, .. } = node;
 
-    let params = find_child(node, |kind| {
-        matches!(kind, NodeKind::Rule(RuleName::Params))
-    })?;
+        let segments = children
+            .into_iter()
+            .filter(|child| matches!(&child.kind, NodeKind::Token(TokenKind::Ident)))
+            .map(|child| self.lower_ident(child))
+            .collect::<Result<Vec<_>, _>>()?;
 
-    let type_spec = find_child(node, |kind| {
-        matches!(kind, NodeKind::Rule(RuleName::TypeSpec))
-    })?;
+        if segments.is_empty() {
+            todo!()
+        }
 
-    Ok(spanned(
-        surface::Constructor {
-            name: lower_ident(name, source)?,
-            parameters: lower_parameters(params, source)?,
-            ty: lower_type_spec(type_spec, source)?,
-        },
-        node,
-    ))
+        Ok(Spanned::new(
+            ExprKind::Identifier(QualifiedIdent { segments }),
+            span,
+        ))
+    }
 }

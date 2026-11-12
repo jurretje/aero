@@ -1,9 +1,10 @@
+use surface::QualifiedIdent;
+
 #[derive(Debug)]
 pub enum ElabError {
-    UnknownIdentifier(String),
+    UnknownIdentifier(QualifiedIdent),
     CannotInferBinderType,
     CannotInferDeclarationType,
     UnsupportedExpression,
     TooManyBinders,
-    DuplicateDeclaration(String),
 }

@@ -1,14 +1,16 @@
 mod context;
 mod environment;
 mod error;
+mod resolver;
 
 pub use error::ElabError;
 
 use context::LocalContext;
 use environment::Environment;
 use surface::SurfaceExpr;
+use syntax::source::Spanned;
 
-use core::{CoreExpr, Name};
+use core::{CoreExpr, NameId};
 
 use crate::context::LocalDecl;
 
@@ -59,24 +61,15 @@ impl Elaborator {
         &mut self,
         definition: &surface::Definition,
     ) -> Result<core::Definition, ElabError> {
-        let name = (&definition.name).into();
+        let name: NameId = NameId(0);
 
         if self.env.contains(&name) {
-            return Err(ElabError::DuplicateDeclaration(name.literal().to_owned()));
+            todo!() // DUPLICATE DECLARATION
         }
 
-        let binders = definition
-            .parameters
-            .iter()
-            .map(|binder| binder.node.clone())
-            .collect::<Vec<_>>();
-
-        let ty = definition
-            .ty
-            .as_ref()
-            .ok_or(ElabError::CannotInferDeclarationType)?;
-        let core_ty = self.elaborate_binders(&binders, ty, false)?;
-        let core_value = self.elaborate_binders(&binders, &definition.value, true)?;
+        let ty = definition.ty.as_ref().ok_or(todo!())?;
+        let core_ty = self.elaborate_binders(&definition.parameters, ty, false)?;
+        let core_value = self.elaborate_binders(&definition.parameters, &definition.value, true)?;
 
         let definition = core::Definition {
             name: name.clone(),
@@ -84,8 +77,7 @@ impl Elaborator {
             value: core_value,
         };
 
-        self.env
-            .insert(&name, core::Declaration::Definition(definition.clone()));
+        // INSERT DECLARATION INTO ENV
 
         Ok(definition)
     }
@@ -94,10 +86,10 @@ impl Elaborator {
         &mut self,
         inductive: &surface::Inductive,
     ) -> Result<core::Inductive, ElabError> {
-        let name = Name::from(&inductive.name);
+        let name = NameId(0);
 
         if self.env.contains(&name) {
-            return Err(ElabError::DuplicateDeclaration(name.literal().to_owned()));
+            todo!() // DUPLICATE DECLARATION
         }
 
         let ty = inductive
@@ -105,40 +97,37 @@ impl Elaborator {
             .as_ref()
             .ok_or(ElabError::CannotInferDeclarationType)?;
 
-        let binders = inductive
-            .parameters
-            .iter()
-            .map(|binder| binder.node.clone())
-            .collect::<Vec<_>>();
-
-        let core_ty = self.elaborate_binders(&binders, ty, false)?;
+        let core_ty = self.elaborate_binders(&inductive.parameters, ty, false)?;
 
         self.ctx.set_self(name.clone());
 
         let mut cons = Vec::with_capacity(inductive.cons.len());
         for constructor in &inductive.cons {
-            cons.push(self.elaborate_constructor(&constructor.node, &binders, &name)?);
+            cons.push(self.elaborate_constructor(&constructor.node, &inductive.parameters)?);
         }
 
         self.ctx.reset_self();
 
-        Ok(core::Inductive {
-            name,
+        let core_inductive = core::Inductive {
+            name: name.clone(),
             ty: core_ty,
             cons,
-        })
+        };
+
+        // INSERT DECLARATION INTO ENV
+
+        Ok(core_inductive)
     }
 
     fn elaborate_constructor(
         &mut self,
         constructor: &surface::Constructor,
-        parameters: &[surface::BinderGroup],
-        inductive_name: &Name,
+        parameters: &[Spanned<surface::BinderGroup>],
     ) -> Result<core::Constructor, ElabError> {
-        let name = Name::from(&constructor.name);
+        let name = todo!();
 
         let mut binders = parameters.to_vec();
-        binders.extend(constructor.parameters.iter().map(|bg| &bg.node).cloned());
+        binders.extend(constructor.parameters.iter().cloned());
 
         let ty = self.elaborate_binders(&binders, &constructor.ty, false)?;
 
@@ -147,7 +136,7 @@ impl Elaborator {
 
     fn elaborate_recursor(
         &mut self,
-        name: Name,
+        name: NameId,
         inductive: &core::Inductive,
     ) -> Result<core::Recursor, ElabError> {
         todo!()
@@ -155,7 +144,7 @@ impl Elaborator {
 
     fn elaborate_level(&self, level: &surface::Level) -> Result<core::Level, ElabError> {
         Ok(match level {
-            surface::Level::Ident(ident) => core::Level::Param(Name::from(ident)),
+            surface::Level::Ident(ident) => core::Level::Param(todo!()),
             surface::Level::Zero => core::Level::Zero,
             surface::Level::Succ(level) => {
                 core::Level::Succ(Box::new(self.elaborate_level(level)?))
@@ -169,21 +158,23 @@ impl Elaborator {
 
     pub fn elaborate_expr(&mut self, expr: &SurfaceExpr) -> Result<CoreExpr, ElabError> {
         match &expr.node {
-            surface::ExprKind::Identifier(ident) => {
-                if let Some((index, _)) = self.ctx.lookup_name(&ident.literal()) {
+            surface::ExprKind::Identifier(id) => {
+                if let Some((index, _)) = self.ctx.lookup_name(id) {
                     return Ok(CoreExpr::BoundVar(index));
                 }
 
-                if self.env.contains(&Name::from(ident)) {
-                    return Ok(CoreExpr::Const(ident.into()));
-                }
+                todo!();
+                // if self.env.contains(&Name::from(id)) {
+                //     return Ok(CoreExpr::Const(id.into()));
+                // }
 
-                Err(ElabError::UnknownIdentifier(ident.literal().to_owned()))
+                Err(ElabError::UnknownIdentifier(*id))
             }
             surface::ExprKind::Sort(sort) => {
                 let level = match sort {
                     surface::Sort::Prop => core::Level::Zero,
-                    surface::Sort::Sort(level) => self.elaborate_level(level)?,
+                    surface::Sort::Sort(Some(level)) => self.elaborate_level(level)?,
+                    surface::Sort::Sort(None) => todo!(),
                 };
 
                 Ok(CoreExpr::Sort(level))
@@ -196,7 +187,7 @@ impl Elaborator {
             surface::ExprKind::Application { function, argument } => {
                 let function = Box::new(self.elaborate_expr(function)?);
                 let argument = Box::new(self.elaborate_expr(argument)?);
-                
+
                 Ok(CoreExpr::App { function, argument })
             }
             surface::ExprKind::Lambda { binders, body } => {
@@ -208,13 +199,15 @@ impl Elaborator {
 
     fn elaborate_binders(
         &mut self,
-        binders: &[surface::BinderGroup],
+        binders: &[Spanned<surface::BinderGroup>],
         body: &SurfaceExpr,
         is_lambda: bool,
     ) -> Result<CoreExpr, ElabError> {
         let Some((binder, remaining)) = binders.split_first() else {
             return self.elaborate_expr(body);
         };
+
+        let binder = &binder.node;
 
         let ty = binder.ty.as_ref().ok_or(ElabError::CannotInferBinderType)?;
 
@@ -229,7 +222,7 @@ impl Elaborator {
 
         for name in &binder.names {
             self.ctx.push(LocalDecl {
-                name: name.clone(),
+                ident: name.clone(),
                 ty: domain.clone(),
                 bi,
             });

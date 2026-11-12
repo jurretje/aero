@@ -1,8 +1,8 @@
-use crate::{SurfaceExpr, ident::Ident};
+use crate::{IdentId, SurfaceExpr};
 
 #[derive(Debug, Clone)]
 pub struct BinderGroup {
-    pub names: Vec<Ident>,
+    pub names: Vec<IdentId>,
     pub ty: Option<SurfaceExpr>,
     pub plicity: Plicity,
 }

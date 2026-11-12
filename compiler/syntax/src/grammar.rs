@@ -231,7 +231,7 @@ pub fn build_grammar() -> Grammar {
                 name: RuleName::Lambda,
                 kind: Rk::Seq(vec![
                     Rk::Token(TokenKind::Fn),
-                    Rk::Token(TokenKind::Ident),
+                    Rk::Ref(RuleName::Params),
                     Rk::Ref(RuleName::TypeSpec),
                     Rk::Token(TokenKind::FatArrow),
                     Rk::Ref(RuleName::Expr),
@@ -241,7 +241,7 @@ pub fn build_grammar() -> Grammar {
                 name: RuleName::Forall,
                 kind: Rk::Seq(vec![
                     Rk::Token(TokenKind::Forall),
-                    Rk::Token(TokenKind::Ident),
+                    Rk::Ref(RuleName::Params),
                     Rk::Ref(RuleName::TypeSpec),
                     Rk::Token(TokenKind::Comma),
                     Rk::Ref(RuleName::Expr),
