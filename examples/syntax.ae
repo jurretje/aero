@@ -1,0 +1,4 @@
+rule def_token  := 'd' 'e' 'f'
+rule prop_token := 'P' 'r' 'o' 'p'
+rule sort_token := 'S' 'o' 'r' 't' 
+rule colon      := ':'

@@ -1,11 +1,7 @@
 use serde::Serialize;
+use source::span::Span;
 
-use crate::{
-    grammar::RuleName,
-    source::Span,
-    theme::{Style, Theme},
-    token::TokenKind,
-};
+use crate::{grammar::RuleName, theme::Theme, token::TokenKind};
 
 #[derive(Debug, Serialize, PartialEq, Eq, Clone)]
 pub enum NodeKind {
@@ -72,7 +68,10 @@ impl Node {
     fn colored_label(&self, input: &str, theme: &Theme) -> String {
         let (label, style) = match self.kind {
             NodeKind::Token(kind) => (self.label(input), kind.style()),
-            NodeKind::Rule(_) => (self.label(input), Style::Punctuation),
+            NodeKind::Rule(_) => {
+                let label = self.label(input);
+                return format!("\x1b[38;2;135;105;145m{}\x1b[0m", label);
+            }
         };
 
         format!("{}{}{}", theme.color(style).ansi(), label, "\x1b[0m")

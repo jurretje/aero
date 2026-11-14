@@ -1,7 +1,6 @@
-use crate::{
-    source::{Location, Span},
-    token::{Token, TokenKind},
-};
+use source::{location::Location, span::Span};
+
+use crate::token::{Token, TokenKind};
 
 #[derive(Debug, Clone)]
 pub struct LexError {

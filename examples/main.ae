@@ -1,2 +1,34 @@
-def identity (x : A) : A :=
-    x
+ind Decidable (P : Prop) : Sort zero :=
+| is_true : P -> Self P
+| is_false : (P -> False) -> Self P
+elim rec
+
+ind Nat : Sort zero :=
+| z : Self
+| s : Self -> Self
+elim rec
+
+def Nat.add (a b : Nat) : Nat :=
+    Nat.rec b (fn (n ih : Nat) => Nat.s ih) a
+
+def modus_ponens {A B : Prop} (h : A -> B) (h : A) : B :=
+    h ha
+
+ind Prod {a : Sort u} {b : Sort v} : Sort (max u v) :=
+| mk : a -> b -> Self a 
+elim rec
+
+ind Exists {a : Sort u} {P : a -> Prop} : Prop :=
+| intro (w : a) (h : P w) : Self P
+elim rec
+
+ind Eq {a : Sort u} (x : a) : a -> Prop :=
+| refl : Self x x
+elim rec
+
+ind Eq {a : Sort u} (x : a) : a -> Prop :=
+| refl : Self x x
+elim rec
+
+ind False : Prop :=
+elim rec

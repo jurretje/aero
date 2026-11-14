@@ -5,12 +5,12 @@ use std::{
 };
 
 use serde::{Deserialize, Serialize};
+use source::span::Span;
 
 use crate::{
     grammar::RuleName,
     graph::{GrammarGraph, StateId, Transition},
     node::{Node, NodeKind},
-    source::Span,
     token::{Token, TokenKind},
 };
 
@@ -86,8 +86,8 @@ impl StackArena {
 #[derive(Clone, Debug)]
 pub enum Action {
     Match(TokenKind, Span),
-    EnterRule(RuleName),
-    ExitRule(RuleName),
+    Enter(RuleName),
+    Exit(RuleName),
     Epsilon,
     Insert(TokenKind, usize),
     Delete(usize),
@@ -101,8 +101,8 @@ impl Action {
             Action::Insert(..) => true,
             Action::Delete(..) => true,
             Action::Replace(..) => true,
-            Action::EnterRule(..) => false,
-            Action::ExitRule(..) => false,
+            Action::Enter(..) => false,
+            Action::Exit(..) => false,
             Action::Epsilon => false,
         }
     }
@@ -138,7 +138,7 @@ fn for_each_neighbor(
                         ..config
                     },
                     0,
-                    Action::EnterRule(name),
+                    Action::Enter(name),
                 );
             }
 
@@ -152,7 +152,7 @@ fn for_each_neighbor(
                                 ..config
                             },
                             0,
-                            Action::ExitRule(name),
+                            Action::Exit(name),
                         );
                     }
                 }
@@ -378,14 +378,11 @@ pub struct BuildFrame {
     start: Option<usize>,
 }
 
-fn combine_spans(children: &[Node]) -> Option<Span> {
+fn combine_node_spans(children: &[Node]) -> Option<Span> {
     let first = children.first()?;
     let last = children.last()?;
 
-    Some(Span {
-        start: first.span.start,
-        end: last.span.end,
-    })
+    Some(Span::combine(first.span, last.span))
 }
 
 pub fn build_ast(actions: &[Action], tokens: &[Token]) -> Option<Node> {
@@ -395,7 +392,7 @@ pub fn build_ast(actions: &[Action], tokens: &[Token]) -> Option<Node> {
 
     for action in actions {
         match action {
-            Action::EnterRule(_) => {
+            Action::Enter(_) => {
                 stack.push(BuildFrame {
                     children: Vec::new(),
                     start: Some(index),
@@ -422,10 +419,10 @@ pub fn build_ast(actions: &[Action], tokens: &[Token]) -> Option<Node> {
                 index += 1;
             }
 
-            Action::ExitRule(rule) => {
+            Action::Exit(rule) => {
                 let frame = stack.pop()?;
 
-                let span = combine_spans(&frame.children).or_else(|| {
+                let span = combine_node_spans(&frame.children).or_else(|| {
                     frame.start.and_then(|i| {
                         let pos = tokens.get(i)?.span.start;
 

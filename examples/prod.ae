@@ -1,3 +1,0 @@
-ind Prod {a : Sort u} {b : Sort v} : Sort (max u v) :=
-| mk : a -> b -> Self a 
-elim rec

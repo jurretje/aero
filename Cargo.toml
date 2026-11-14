@@ -14,7 +14,7 @@ members = [
     "compiler/cli",
     "compiler/core",
     "compiler/elaborator",
-    "compiler/pipeline",
+    "compiler/pipeline", "compiler/source",
     "compiler/surface",
     "compiler/syntax",
     "playground",

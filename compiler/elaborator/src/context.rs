@@ -1,27 +1,27 @@
-use core::{BinderInfo, CoreExpr, NameId};
+use core::{BinderInfo, Term, ConstantId};
 
 use surface::{IdentId, QualifiedIdent};
 
 #[derive(Debug, Clone)]
 pub struct LocalDecl {
     pub ident: IdentId,
-    pub ty: CoreExpr,
+    pub ty: Term,
     pub bi: BinderInfo,
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct LocalContext {
     decls: Vec<LocalDecl>,
-    current_inductive: Option<CoreExpr>,
+    current_inductive: Option<Term>,
 }
 
 impl LocalContext {
-    pub fn current_inductive(&self) -> &Option<CoreExpr> {
+    pub fn current_inductive(&self) -> &Option<Term> {
         &self.current_inductive
     }
 
-    pub fn set_self(&mut self, name: NameId) {
-        self.current_inductive = Some(CoreExpr::Const(name))
+    pub fn set_self(&mut self, name: ConstantId) {
+        self.current_inductive = Some(Term::Const(name))
     }
 
     pub fn reset_self(&mut self) {

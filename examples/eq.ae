@@ -1,3 +1,0 @@
-ind Eq {a : Sort u} (x : a) : a -> Prop :=
-| refl : Self x x
-elim rec

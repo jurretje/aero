@@ -1,21 +1,21 @@
 #[derive(Debug, Clone)]
-pub enum CoreExpr {
-    BoundVar(usize),
+pub enum Term {
+    Var(usize),
     Sort(Level),
-    Const(NameId),
+    Const(ConstantId),
     App {
-        function: Box<CoreExpr>,
-        argument: Box<CoreExpr>,
+        function: Box<Term>,
+        argument: Box<Term>,
     },
     Lam {
         info: BinderInfo,
-        domain: Box<CoreExpr>,
-        body: Box<CoreExpr>,
+        domain: Box<Term>,
+        body: Box<Term>,
     },
     Pi {
         info: BinderInfo,
-        domain: Box<CoreExpr>,
-        body: Box<CoreExpr>,
+        domain: Box<Term>,
+        body: Box<Term>,
     },
 }
 
@@ -30,8 +30,11 @@ pub enum Level {
     Zero,
     Succ(Box<Level>),
     Max(Box<Level>, Box<Level>),
-    Param(NameId),
+    Param(LevelParamId),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct NameId(pub usize);
+pub struct LevelParamId(pub usize);
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ConstantId(pub usize);

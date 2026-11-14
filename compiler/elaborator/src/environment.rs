@@ -1,13 +1,13 @@
-use core::NameId;
+use core::ConstantId;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Default)]
 pub struct Environment {
-    declarations: HashMap<NameId, core::Declaration>,
+    declarations: HashMap<ConstantId, core::Declaration>,
 }
 
 impl Environment {
-    pub fn contains(&self, id: &NameId) -> bool {
+    pub fn contains(&self, id: &ConstantId) -> bool {
         todo!()
     }
 }

@@ -1,11 +1,11 @@
+use source::span::Spanned;
 use surface::{
-    BinderGroup, Constructor, Declaration, Definition, ExprKind, IdentId, Inductive, Level, Module,
-    Plicity, QualifiedIdent, Sort, SurfaceExpr,
+    BinderGroup, Constructor, Declaration, Definition, Expr, ExprKind, IdentId, Inductive, Level,
+    Module, Plicity, QualifiedIdent, Sort,
 };
 use syntax::{
     grammar::RuleName,
     node::{Node, NodeKind},
-    source::Spanned,
     token::TokenKind,
 };
 
@@ -35,8 +35,15 @@ fn take_one(
     children: Vec<Node>,
     predicate: impl Fn(&NodeKind) -> bool,
 ) -> Result<Node, Diagnostic> {
-    let (matched, _) = partition_children(children, predicate);
-    matched.into_iter().next().ok_or_else(|| todo!())
+    let mut matched = children.into_iter().filter(|child| predicate(&child.kind));
+
+    let node = matched.next().ok_or_else(|| todo!())?;
+
+    if matched.next().is_some() {
+        todo!("expected one node")
+    }
+
+    Ok(node)
 }
 
 #[derive(Default)]
@@ -120,7 +127,7 @@ impl Lowerer {
         }
     }
 
-    fn lower_sort_expression(&mut self, node: Node) -> Result<SurfaceExpr, Diagnostic> {
+    fn lower_sort_expression(&mut self, node: Node) -> Result<Expr, Diagnostic> {
         let level = node
             .children
             .into_iter()
@@ -128,7 +135,7 @@ impl Lowerer {
             .map(|level| self.lower_universe_expression(level))
             .transpose()?;
 
-        Ok(Spanned::new(ExprKind::Sort(Sort::Sort(level)), node.span))
+        Ok(Spanned::new(node.span, ExprKind::Sort(Sort::Sort(level))))
     }
 
     fn lower_ident(&mut self, node: Node) -> Result<IdentId, Diagnostic> {
@@ -137,17 +144,18 @@ impl Lowerer {
             _ => todo!(),
         }
     }
-}
 
-impl Lowerer {
-    fn lower_expression(&mut self, node: Node) -> Result<SurfaceExpr, Diagnostic> {
+    fn lower_expression(&mut self, node: Node) -> Result<Expr, Diagnostic> {
         let s = match node.kind {
-            NodeKind::Token(TokenKind::Prop) => Spanned::new(ExprKind::Sort(Sort::Prop), node.span),
-            NodeKind::Token(TokenKind::SelfType) => Spanned::new(ExprKind::SelfType, node.span),
+            NodeKind::Token(TokenKind::Prop) => Spanned::new(node.span, ExprKind::Sort(Sort::Prop)),
+            NodeKind::Token(TokenKind::SelfType) => Spanned::new(node.span, ExprKind::SelfType),
             NodeKind::Rule(RuleName::SortExpr) => self.lower_sort_expression(node)?,
             NodeKind::Rule(RuleName::Expr) => self.lower_arrow_expression(node)?,
             NodeKind::Rule(RuleName::AppExpr) => self.lower_application(node)?,
-            NodeKind::Rule(RuleName::QualifiedIdent) => self.lower_qualified_ident(node)?,
+            NodeKind::Rule(RuleName::QualifiedIdent) => Spanned::new(
+                node.span,
+                ExprKind::Identifier(self.lower_qualified_ident(node)?),
+            ),
             NodeKind::Rule(RuleName::ParenExpr) => self.lower_parenthesized(node)?,
             NodeKind::Rule(RuleName::Lambda) => self.lower_lambda(node)?,
             NodeKind::Rule(RuleName::Forall) => self.lower_forall(node)?,
@@ -155,10 +163,8 @@ impl Lowerer {
         };
         Ok(s)
     }
-}
 
-impl Lowerer {
-    fn lower_parenthesized(&mut self, node: Node) -> Result<SurfaceExpr, Diagnostic> {
+    fn lower_parenthesized(&mut self, node: Node) -> Result<Expr, Diagnostic> {
         let Node { children, .. } = node;
 
         let mut expression = None;
@@ -173,10 +179,8 @@ impl Lowerer {
         let expression = expression.ok_or_else(|| todo!())?;
         self.lower_expression(expression)
     }
-}
 
-impl Lowerer {
-    fn lower_application(&mut self, node: Node) -> Result<SurfaceExpr, Diagnostic> {
+    fn lower_application(&mut self, node: Node) -> Result<Expr, Diagnostic> {
         let mut expressions = node
             .children
             .into_iter()
@@ -187,20 +191,18 @@ impl Lowerer {
 
         for expression in expressions {
             result = Spanned::new(
+                node.span,
                 ExprKind::Application {
                     function: Box::new(result),
                     argument: Box::new(expression?),
                 },
-                node.span,
             );
         }
 
         Ok(result)
     }
-}
 
-impl Lowerer {
-    fn lower_atomic_expression(&mut self, node: Node) -> Result<SurfaceExpr, Diagnostic> {
+    fn lower_atomic_expression(&mut self, node: Node) -> Result<Expr, Diagnostic> {
         let Node { children, .. } = node;
 
         let mut expr = None;
@@ -213,10 +215,8 @@ impl Lowerer {
 
         self.lower_expression(expr)
     }
-}
 
-impl Lowerer {
-    fn lower_arrow_expression(&mut self, node: Node) -> Result<SurfaceExpr, Diagnostic> {
+    fn lower_arrow_expression(&mut self, node: Node) -> Result<Expr, Diagnostic> {
         let mut operands = node
             .children
             .into_iter()
@@ -228,28 +228,26 @@ impl Lowerer {
 
         while let Some(left) = operands.pop() {
             let binder = Spanned::new(
+                node.span,
                 BinderGroup {
                     names: vec![],
                     ty: Some(left),
                     plicity: Plicity::Explicit,
                 },
-                node.span,
             );
 
             result = Spanned::new(
+                node.span,
                 ExprKind::Pi {
                     binders: vec![binder],
                     body: Box::new(result),
                 },
-                node.span,
             );
         }
 
         Ok(result)
     }
-}
 
-impl Lowerer {
     fn lower_binder_group(&mut self, node: Node) -> Result<Spanned<BinderGroup>, Diagnostic> {
         let Node {
             kind,
@@ -282,17 +280,15 @@ impl Lowerer {
         let type_node = type_node.ok_or_else(|| todo!())?;
 
         Ok(Spanned::new(
+            span,
             BinderGroup {
                 names,
                 ty: Some(self.lower_type_spec(type_node)?),
                 plicity,
             },
-            span,
         ))
     }
-}
 
-impl Lowerer {
     fn lower_parameters(&mut self, node: Node) -> Result<Vec<Spanned<BinderGroup>>, Diagnostic> {
         node.children
             .into_iter()
@@ -305,9 +301,8 @@ impl Lowerer {
             .map(|child| self.lower_binder_group(child))
             .collect()
     }
-}
-impl Lowerer {
-    fn lower_lambda(&mut self, node: Node) -> Result<SurfaceExpr, Diagnostic> {
+
+    fn lower_lambda(&mut self, node: Node) -> Result<Expr, Diagnostic> {
         let Node { children, span, .. } = node;
 
         let mut params = None;
@@ -325,17 +320,15 @@ impl Lowerer {
         let body = body.ok_or_else(|| todo!())?;
 
         Ok(Spanned::new(
+            span,
             ExprKind::Lambda {
                 binders: self.lower_parameters(params)?,
                 body: Box::new(self.lower_expression(body)?),
             },
-            span,
         ))
     }
-}
 
-impl Lowerer {
-    fn lower_forall(&mut self, node: Node) -> Result<SurfaceExpr, Diagnostic> {
+    fn lower_forall(&mut self, node: Node) -> Result<Expr, Diagnostic> {
         let Node { children, span, .. } = node;
 
         let mut params = None;
@@ -353,15 +346,15 @@ impl Lowerer {
         let body = body.ok_or_else(|| todo!())?;
 
         Ok(Spanned::new(
+            span,
             ExprKind::Pi {
                 binders: self.lower_parameters(params)?,
                 body: Box::new(self.lower_expression(body)?),
             },
-            span,
         ))
     }
 
-    fn lower_type_spec(&mut self, node: Node) -> Result<SurfaceExpr, Diagnostic> {
+    fn lower_type_spec(&mut self, node: Node) -> Result<Expr, Diagnostic> {
         let Node { children, .. } = node;
 
         let mut expr = None;
@@ -377,9 +370,7 @@ impl Lowerer {
 
         self.lower_expression(expr)
     }
-}
 
-impl Lowerer {
     fn lower_declaration(&mut self, node: Node) -> Result<Spanned<Declaration>, Diagnostic> {
         let span = node.span;
 
@@ -388,14 +379,21 @@ impl Lowerer {
                 Declaration::Definition(self.lower_definition(node)?)
             }
             NodeKind::Rule(RuleName::Ind) => Declaration::Inductive(self.lower_inductive(node)?),
+            NodeKind::Rule(RuleName::Module) => Declaration::Module(self.lower_module(node)?),
             _ => todo!(),
         };
 
-        Ok(Spanned::new(decl, span))
+        Ok(Spanned::new(span, decl))
     }
-}
 
-impl Lowerer {
+    fn lower_module(&mut self, node: Node) -> Result<IdentId, Diagnostic> {
+        let name = take_one(node.children, |kind| {
+            matches!(kind, NodeKind::Token(TokenKind::Ident))
+        })?;
+
+        self.lower_ident(name)
+    }
+
     fn lower_definition(&mut self, node: Node) -> Result<Definition, Diagnostic> {
         let Node { children, .. } = node;
 
@@ -426,9 +424,7 @@ impl Lowerer {
             value: self.lower_expression(value)?,
         })
     }
-}
 
-impl Lowerer {
     fn lower_inductive(&mut self, node: Node) -> Result<Inductive, Diagnostic> {
         let Node { children, .. } = node;
 
@@ -464,9 +460,7 @@ impl Lowerer {
             recursor_name: Some(self.lower_ident(recursor_name)?),
         })
     }
-}
 
-impl Lowerer {
     fn lower_constructor(&mut self, node: Node) -> Result<Spanned<Constructor>, Diagnostic> {
         let Node { children, .. } = node;
 
@@ -488,19 +482,17 @@ impl Lowerer {
         let type_spec = type_spec.ok_or_else(|| todo!())?;
 
         Ok(Spanned::new(
+            node.span,
             Constructor {
                 name: self.lower_ident(name)?,
                 parameters: self.lower_parameters(params)?,
                 ty: self.lower_type_spec(type_spec)?,
             },
-            node.span,
         ))
     }
-}
 
-impl Lowerer {
-    fn lower_qualified_ident(&mut self, node: Node) -> Result<SurfaceExpr, Diagnostic> {
-        let Node { children, span, .. } = node;
+    fn lower_qualified_ident(&mut self, node: Node) -> Result<QualifiedIdent, Diagnostic> {
+        let Node { children, .. } = node;
 
         let segments = children
             .into_iter()
@@ -512,9 +504,6 @@ impl Lowerer {
             todo!()
         }
 
-        Ok(Spanned::new(
-            ExprKind::Identifier(QualifiedIdent { segments }),
-            span,
-        ))
+        Ok(QualifiedIdent { segments })
     }
 }

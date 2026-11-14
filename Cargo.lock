@@ -93,6 +93,7 @@ name = "cli"
 version = "0.1.0"
 dependencies = [
  "pipeline",
+ "source",
 ]
 
 [[package]]
@@ -107,6 +108,7 @@ name = "elaborator"
 version = "0.1.0"
 dependencies = [
  "core",
+ "source",
  "surface",
  "syntax",
 ]
@@ -369,6 +371,7 @@ dependencies = [
  "elaborator",
  "serde",
  "serde_json",
+ "source",
  "surface",
  "syntax",
 ]
@@ -524,9 +527,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "source"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "surface"
 version = "0.1.0"
 dependencies = [
+ "source",
  "syntax",
 ]
 
@@ -553,6 +565,7 @@ version = "0.1.0"
 dependencies = [
  "serde",
  "serde_json",
+ "source",
 ]
 
 [[package]]

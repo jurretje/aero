@@ -7,3 +7,4 @@ edition = "2024"
 surface = { path = "../surface" }
 core = { path = "../core" }
 syntax = { path = "../syntax" }
+source = { path = "../source" }

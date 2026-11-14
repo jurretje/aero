@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use crate::{IdentId, QualifiedIdent, Spanned, binder::BinderGroup};
 
-pub type SurfaceExpr = Spanned<ExprKind>;
+pub type Expr = Spanned<ExprKind>;
 
 #[derive(Debug, Clone)]
 pub enum ExprKind {
@@ -10,17 +10,18 @@ pub enum ExprKind {
     Sort(Sort),
     SelfType,
     Application {
-        function: Box<SurfaceExpr>,
-        argument: Box<SurfaceExpr>,
+        function: Box<Expr>,
+        argument: Box<Expr>,
     },
     Lambda {
         binders: Vec<Spanned<BinderGroup>>,
-        body: Box<SurfaceExpr>,
+        body: Box<Expr>,
     },
     Pi {
         binders: Vec<Spanned<BinderGroup>>,
-        body: Box<SurfaceExpr>,
+        body: Box<Expr>,
     },
+    Hole
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

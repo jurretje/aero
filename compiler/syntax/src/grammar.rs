@@ -39,6 +39,7 @@ pub enum RuleKind {
 #[repr(usize)]
 pub enum RuleName {
     Env,
+    Module,
     Ind,
     Constructor,
     Const,
@@ -55,30 +56,8 @@ pub enum RuleName {
     ParenLevel,
     Lambda,
     Forall,
+    ModulePath,
     QualifiedIdent,
-}
-
-impl RuleName {
-    pub const ALL: [Self; 18] = [
-        Self::Env,
-        Self::Ind,
-        Self::Constructor,
-        Self::Const,
-        Self::Params,
-        Self::ExplicitSection,
-        Self::ImplicitSection,
-        Self::TypeSpec,
-        Self::Expr,
-        Self::ParenExpr,
-        Self::AppExpr,
-        Self::AtomicExpr,
-        Self::SortExpr,
-        Self::UniverseLevel,
-        Self::ParenLevel,
-        Self::Lambda,
-        Self::Forall,
-        Self::QualifiedIdent,
-    ];
 }
 
 pub fn build_grammar() -> Grammar {
@@ -90,15 +69,23 @@ pub fn build_grammar() -> Grammar {
             Rule {
                 name: RuleName::Env,
                 kind: Rk::Star(Box::new(Rk::Alt(vec![
+                    Rk::Ref(RuleName::Module),
                     Rk::Ref(RuleName::Ind),
                     Rk::Ref(RuleName::Const),
                 ]))),
             },
             Rule {
+                name: RuleName::Module,
+                kind: Rk::Seq(vec![
+                    Rk::Token(TokenKind::Mod),
+                    Rk::Ref(RuleName::ModulePath),
+                ]),
+            },
+            Rule {
                 name: RuleName::Ind,
                 kind: Rk::Seq(vec![
                     Rk::Token(TokenKind::Ind),
-                    Rk::Token(TokenKind::Ident),
+                    Rk::Ref(RuleName::QualifiedIdent),
                     Rk::Ref(RuleName::Params),
                     Rk::Ref(RuleName::TypeSpec),
                     Rk::Token(TokenKind::Assign),
@@ -120,7 +107,7 @@ pub fn build_grammar() -> Grammar {
                 name: RuleName::Const,
                 kind: Rk::Seq(vec![
                     Rk::Token(TokenKind::Def),
-                    Rk::Token(TokenKind::Ident),
+                    Rk::Ref(RuleName::QualifiedIdent),
                     Rk::Ref(RuleName::Params),
                     Rk::Ref(RuleName::TypeSpec),
                     Rk::Token(TokenKind::Assign),
@@ -188,6 +175,7 @@ pub fn build_grammar() -> Grammar {
                     Rk::Ref(RuleName::ParenExpr),
                     Rk::Ref(RuleName::Lambda),
                     Rk::Ref(RuleName::Forall),
+                    Rk::Token(TokenKind::Placeholder),
                     Rk::Token(TokenKind::Prop),
                     Rk::Ref(RuleName::SortExpr),
                     Rk::Token(TokenKind::SelfType),
@@ -232,7 +220,7 @@ pub fn build_grammar() -> Grammar {
                 kind: Rk::Seq(vec![
                     Rk::Token(TokenKind::Fn),
                     Rk::Ref(RuleName::Params),
-                    Rk::Ref(RuleName::TypeSpec),
+                    Rk::Question(Box::new(Rk::Ref(RuleName::TypeSpec))),
                     Rk::Token(TokenKind::FatArrow),
                     Rk::Ref(RuleName::Expr),
                 ]),
@@ -242,19 +230,27 @@ pub fn build_grammar() -> Grammar {
                 kind: Rk::Seq(vec![
                     Rk::Token(TokenKind::Forall),
                     Rk::Ref(RuleName::Params),
-                    Rk::Ref(RuleName::TypeSpec),
+                    Rk::Question(Box::new(Rk::Ref(RuleName::TypeSpec))),
                     Rk::Token(TokenKind::Comma),
                     Rk::Ref(RuleName::Expr),
                 ]),
             },
             Rule {
-                name: RuleName::QualifiedIdent,
+                name: RuleName::ModulePath,
                 kind: Rk::Seq(vec![
                     Rk::Token(TokenKind::Ident),
                     Rk::Star(Box::new(Rk::Seq(vec![
-                        Rk::Token(TokenKind::Dot),
+                        Rk::Token(TokenKind::DoubleColon),
                         Rk::Token(TokenKind::Ident),
                     ]))),
+                ]),
+            },
+            Rule {
+                name: RuleName::QualifiedIdent,
+                kind: Rk::Seq(vec![
+                    Rk::Ref(RuleName::ModulePath),
+                    Rk::Token(TokenKind::Dot),
+                    Rk::Token(TokenKind::Ident),
                 ]),
             },
         ]),

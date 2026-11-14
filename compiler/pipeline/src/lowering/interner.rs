@@ -1,5 +1,5 @@
+use source::span::Span;
 use surface::IdentId;
-use syntax::source::Span;
 
 #[derive(Default)]
 pub struct IdentInterner {

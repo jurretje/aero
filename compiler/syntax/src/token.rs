@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use serde::Serialize;
 
-use crate::source::Span;
+use source::span::Span;
 
 use crate::theme::Style;
 
@@ -22,6 +22,7 @@ pub enum TokenKind {
     Max,
     Zero,
     Succ,
+    Mod,
     Assign,
     OpenParen,
     CloseParen,
@@ -29,6 +30,7 @@ pub enum TokenKind {
     CloseBrace,
     Ident,
     Colon,
+    DoubleColon,
     Pipe,
     Arrow,
     FatArrow,
@@ -37,6 +39,7 @@ pub enum TokenKind {
     Comma,
     Dot,
     SelfType,
+    Placeholder,
 }
 
 impl TokenKind {
@@ -44,13 +47,12 @@ impl TokenKind {
         use TokenKind::*;
 
         match self {
-            Ind | Elim | Def | Fn | Forall => Style::Keyword,
+            Ind | Elim | Def | Fn | Forall | Mod | Placeholder => Style::Keyword,
             Prop | Sort | Max | Succ | Zero | SelfType => Style::Builtin,
             Ident => Style::Identifier,
             Assign | Arrow | FatArrow => Style::Operator,
-            OpenParen | CloseParen | OpenBrace | CloseBrace | Colon | Pipe | Comma | Dot => {
-                Style::Punctuation
-            }
+            OpenParen | CloseParen | OpenBrace | CloseBrace | Colon | DoubleColon | Pipe
+            | Comma | Dot => Style::Punctuation,
         }
     }
 
@@ -89,14 +91,40 @@ impl TokenKind {
     pub fn all() -> &'static [TokenKind] {
         use TokenKind::*;
         &[
-            Ind, Elim, Def, Prop, Sort, Assign, OpenParen, CloseParen, OpenBrace, CloseBrace,
-            Colon, Pipe, Arrow, FatArrow, Fn, Forall, Comma, SelfType, Dot, Max, Succ, Zero, Ident,
+            Ind,
+            Elim,
+            Def,
+            Prop,
+            Sort,
+            Assign,
+            OpenParen,
+            CloseParen,
+            OpenBrace,
+            CloseBrace,
+            Mod,
+            Colon,
+            DoubleColon,
+            Pipe,
+            Arrow,
+            FatArrow,
+            Fn,
+            Forall,
+            Comma,
+            SelfType,
+            Dot,
+            Max,
+            Succ,
+            Zero,
+            Placeholder,
+            Ident,
         ]
     }
 
     pub fn literal(&self) -> Option<&'static str> {
         use TokenKind::*;
         Some(match self {
+            Placeholder => "_",
+            Mod => "mod",
             SelfType => "Self",
             Ind => "ind",
             Elim => "elim",
@@ -113,6 +141,7 @@ impl TokenKind {
             CloseBrace => "}",
             Ident => return None,
             Colon => ":",
+            DoubleColon => "::",
             Pipe => "|",
             Arrow => "->",
             FatArrow => "=>",

@@ -7,10 +7,10 @@ pub use error::ElabError;
 
 use context::LocalContext;
 use environment::Environment;
-use surface::SurfaceExpr;
-use syntax::source::Spanned;
+use source::span::Spanned;
+use surface::{Expr, ExprKind};
 
-use core::{CoreExpr, NameId};
+use core::{ConstantId, Term};
 
 use crate::context::LocalDecl;
 
@@ -42,6 +42,7 @@ impl Elaborator {
                 surface::Declaration::Inductive(inductive) => self
                     .elaborate_inductive(inductive)
                     .map(core::Declaration::Inductive),
+                surface::Declaration::Module(i) => todo!(),
             };
 
             match result {
@@ -61,7 +62,7 @@ impl Elaborator {
         &mut self,
         definition: &surface::Definition,
     ) -> Result<core::Definition, ElabError> {
-        let name: NameId = NameId(0);
+        let name: ConstantId = ConstantId(0);
 
         if self.env.contains(&name) {
             todo!() // DUPLICATE DECLARATION
@@ -86,7 +87,7 @@ impl Elaborator {
         &mut self,
         inductive: &surface::Inductive,
     ) -> Result<core::Inductive, ElabError> {
-        let name = NameId(0);
+        let name = ConstantId(0);
 
         if self.env.contains(&name) {
             todo!() // DUPLICATE DECLARATION
@@ -136,7 +137,7 @@ impl Elaborator {
 
     fn elaborate_recursor(
         &mut self,
-        name: NameId,
+        name: ConstantId,
         inductive: &core::Inductive,
     ) -> Result<core::Recursor, ElabError> {
         todo!()
@@ -156,11 +157,11 @@ impl Elaborator {
         })
     }
 
-    pub fn elaborate_expr(&mut self, expr: &SurfaceExpr) -> Result<CoreExpr, ElabError> {
+    pub fn elaborate_expr(&mut self, expr: &Expr) -> Result<Term, ElabError> {
         match &expr.node {
-            surface::ExprKind::Identifier(id) => {
+            ExprKind::Identifier(id) => {
                 if let Some((index, _)) = self.ctx.lookup_name(id) {
-                    return Ok(CoreExpr::BoundVar(index));
+                    return Ok(Term::Var(index));
                 }
 
                 todo!();
@@ -170,39 +171,38 @@ impl Elaborator {
 
                 Err(ElabError::UnknownIdentifier(*id))
             }
-            surface::ExprKind::Sort(sort) => {
+            ExprKind::Sort(sort) => {
                 let level = match sort {
                     surface::Sort::Prop => core::Level::Zero,
                     surface::Sort::Sort(Some(level)) => self.elaborate_level(level)?,
                     surface::Sort::Sort(None) => todo!(),
                 };
 
-                Ok(CoreExpr::Sort(level))
+                Ok(Term::Sort(level))
             }
-            surface::ExprKind::SelfType => self
+            ExprKind::SelfType => self
                 .ctx
                 .current_inductive()
                 .clone()
                 .ok_or(ElabError::UnsupportedExpression),
-            surface::ExprKind::Application { function, argument } => {
+            ExprKind::Application { function, argument } => {
                 let function = Box::new(self.elaborate_expr(function)?);
                 let argument = Box::new(self.elaborate_expr(argument)?);
 
-                Ok(CoreExpr::App { function, argument })
+                Ok(Term::App { function, argument })
             }
-            surface::ExprKind::Lambda { binders, body } => {
-                self.elaborate_binders(binders, body, true)
-            }
-            surface::ExprKind::Pi { binders, body } => self.elaborate_binders(binders, body, false),
+            ExprKind::Lambda { binders, body } => self.elaborate_binders(binders, body, true),
+            ExprKind::Pi { binders, body } => self.elaborate_binders(binders, body, false),
+            ExprKind::Hole => todo!(),
         }
     }
 
     fn elaborate_binders(
         &mut self,
         binders: &[Spanned<surface::BinderGroup>],
-        body: &SurfaceExpr,
+        body: &Expr,
         is_lambda: bool,
-    ) -> Result<CoreExpr, ElabError> {
+    ) -> Result<Term, ElabError> {
         let Some((binder, remaining)) = binders.split_first() else {
             return self.elaborate_expr(body);
         };
@@ -235,13 +235,13 @@ impl Elaborator {
 
         for _ in binder.names.iter().rev() {
             body = if is_lambda {
-                CoreExpr::Lam {
+                Term::Lam {
                     info: bi,
                     domain: Box::new(domain.clone()),
                     body: Box::new(body),
                 }
             } else {
-                CoreExpr::Pi {
+                Term::Pi {
                     info: bi,
                     domain: Box::new(domain.clone()),
                     body: Box::new(body),
