@@ -61,7 +61,11 @@ impl SourceMap {
         id
     }
 
-    pub fn source(&self, id: SourceId) -> &str {
+    pub fn get_source(&self, id: SourceId) -> &str {
         &self.files[&id].source
+    }
+
+    pub fn get_text(&self, text_ref: TextRef) -> &str {
+        text_ref.span.text(self.get_source(text_ref.source))
     }
 }

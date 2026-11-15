@@ -49,7 +49,7 @@ where
     ) -> Result<SourceId, P::Error> {
         let request = self
             .resolver
-            .child_request(parent, sources.source(parent), span);
+            .child_request(parent, sources.get_source(parent), span);
 
         let source = self.provider.load(&request)?;
         Ok(sources.insert_source(parent, span, source))
